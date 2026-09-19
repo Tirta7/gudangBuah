@@ -23,58 +23,16 @@ echo.
 set "INSTALL_DIR=%~dp0"
 cd /d "%INSTALL_DIR%"
 
-:: ============================================================
-:: Cari Docker untuk pastikan DB berjalan
-:: ============================================================
-echo [1/3] Memastikan database gudangBuah aktif...
+set DATABASE_URL=postgresql://postgres:vocpos2026@127.0.0.1:4538/gudangbuah
 
-set "DOCKER_EXE="
-if exist "C:\Program Files\Docker\Docker\resources\bin\docker.exe" (
-    set "DOCKER_EXE=C:\Program Files\Docker\Docker\resources\bin\docker.exe"
-) else (
-    for /f "delims=" %%i in ('where docker.exe 2^>nul') do set "DOCKER_EXE=%%i"
-)
-
-if "!DOCKER_EXE!"=="" (
-    echo  [!] Docker tidak ditemukan. Memastikan database berjalan via koneksi langsung...
-    goto SKIP_DOCKER
-)
-
-:: Pastikan Docker Engine running
-"!DOCKER_EXE!" info >nul 2>&1
-if errorlevel 1 (
-    echo  [!] Docker Engine tidak aktif. Membuka Docker Desktop...
-    start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe" 2>nul
-    echo  Menunggu 30 detik...
-    timeout /t 30 /nobreak >nul
-    "!DOCKER_EXE!" info >nul 2>&1
-    if errorlevel 1 (
-        echo  [!] Docker masih tidak aktif. Pastikan buka Docker Desktop manual.
-        goto SKIP_DOCKER
-    )
-)
-
-:: Start container DB jika belum jalan
-"!DOCKER_EXE!" start gudangbuah-db >nul 2>&1
-if not errorlevel 1 (
-    echo  [OK] Container database gudangBuah aktif.
-) else (
-    echo  [..] Container belum ada, membuat baru...
-    "!DOCKER_EXE!" compose -f "%INSTALL_DIR%docker-compose-buah.yml" up -d >nul 2>&1
-    echo  [OK] Database baru dibuat.
-)
-timeout /t 5 /nobreak >nul
-
-:SKIP_DOCKER
-echo.
-echo [2/3] Membuka Backend API GudangBuah (port 3001)...
+echo [1/2] Membuka Backend API GudangBuah (port 3001)...
 start "GudangBuah - Backend API (port 3001)" cmd /k "color 0B & title GudangBuah Backend & echo ===== BACKEND API GUDANG BUAH (port 3001) ===== & echo. & set PORT=3001 & pnpm --filter @workspace/api-server run dev"
 
 :: Delay sedikit agar backend sempat start
 timeout /t 3 /nobreak >nul
 
 echo.
-echo [3/3] Membuka Frontend GudangBuah (port 5174)...
+echo [2/2] Membuka Frontend GudangBuah (port 5174)...
 start "GudangBuah - Frontend Vite (port 5174)" cmd /k "color 0A & title GudangBuah Frontend & echo ===== FRONTEND GUDANG BUAH (port 5174) ===== & echo. & set PORT=5174 & pnpm --filter @workspace/tmcpos run dev"
 
 :: Tunggu server siap lalu buka browser

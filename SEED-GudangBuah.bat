@@ -28,7 +28,8 @@ if /i not "!CONFIRM!"=="YES" (
 echo.
 echo  Mengisi data awal...
 set CI=true
-call pnpm --filter @workspace/db exec tsx src/seed.ts
+set DATABASE_URL=postgresql://postgres:vocpos2026@127.0.0.1:4538/gudangbuah
+node "d:\GudangBuah_App\node_modules\.pnpm\tsx@4.22.4\node_modules\tsx\dist\cli.mjs" "d:\GudangBuah_App\lib\db\src\seed.ts"
 
 if errorlevel 1 (
     echo.
