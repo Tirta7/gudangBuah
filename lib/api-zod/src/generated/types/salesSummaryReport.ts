@@ -14,8 +14,8 @@ export interface SalesSummaryReport {
   totalReturnExchanged: number;
   netReturnImpact: number;
   totalTransactions: number;
-  totalRolls: number;
-  totalMeters: number;
+  totalKrats: number;
+  totalKgs: number;
   cashRevenue: number;
   tempoRevenue: number;
 }

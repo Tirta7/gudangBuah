@@ -35,8 +35,8 @@ router.get("/reports/sales-summary", async (req, res) => {
 
   const [itemsSummary] = await db
     .select({
-      totalRolls: sql<string>`coalesce(sum(${saleItemsTable.rolls}), 0)`,
-      totalMeters: sql<string>`coalesce(sum(${saleItemsTable.meters}), 0)`,
+      totalKrats: sql<string>`coalesce(sum(${saleItemsTable.krats}), 0)`,
+      totalKgs: sql<string>`coalesce(sum(${saleItemsTable.kgs}), 0)`,
     })
     .from(saleItemsTable)
     .leftJoin(salesTable, eq(saleItemsTable.saleId, salesTable.id))
@@ -46,7 +46,7 @@ router.get("/reports/sales-summary", async (req, res) => {
     .select({
       productId: saleItemsTable.productId,
       productName: productsTable.name,
-      totalMeters: sql<string>`coalesce(sum(${saleItemsTable.meters}), 0)`,
+      totalKgs: sql<string>`coalesce(sum(${saleItemsTable.kgs}), 0)`,
       totalRevenue: sql<string>`coalesce(sum(${saleItemsTable.subtotal}), 0)`,
     })
     .from(saleItemsTable)
@@ -105,14 +105,14 @@ router.get("/reports/sales-summary", async (req, res) => {
     netReturnImpact,
     totalTransactions: totalTx,
     averageTransaction: totalTx > 0 ? totalRev / totalTx : 0,
-    totalRolls: numStr(itemsSummary?.totalRolls),
-    totalMeters: numStr(itemsSummary?.totalMeters),
+    totalKrats: numStr(itemsSummary?.totalKrats),
+    totalKgs: numStr(itemsSummary?.totalKgs),
     cashRevenue: numStr(summary?.cashRevenue),
     tempoRevenue: numStr(summary?.tempoRevenue),
     byProduct: byProduct.map(p => ({
       productId: p.productId,
       productName: p.productName ?? "Unknown",
-      totalMeters: numStr(p.totalMeters),
+      totalKgs: numStr(p.totalKgs),
       totalRevenue: numStr(p.totalRevenue)
     })),
     byCategory: byCategory.map(c => ({
@@ -299,9 +299,9 @@ router.get("/reports/stock-summary", async (req, res) => {
       productName: productsTable.name,
       categoryName: categoriesTable.name,
       rackLocation: productsTable.rackLocation,
-      rollStock: productsTable.rollStock,
-      meterStock: productsTable.meterStock,
-      pricePerMeter: productsTable.pricePerMeter,
+      kratStock: productsTable.kratStock,
+      kgStock: productsTable.kgStock,
+      pricePerKg: productsTable.pricePerKg,
       minStock: productsTable.minStock,
     })
     .from(productsTable)
@@ -313,11 +313,11 @@ router.get("/reports/stock-summary", async (req, res) => {
     name: p.productName,
     categoryName: p.categoryName ?? null,
     rackLocation: p.rackLocation,
-    rollStock: numStr(p.rollStock),
-    meterStock: numStr(p.meterStock),
+    kratStock: numStr(p.kratStock),
+    kgStock: numStr(p.kgStock),
     minStock: numStr(p.minStock),
-    stockValue: numStr(p.meterStock) * numStr(p.pricePerMeter),
-    isLowStock: numStr(p.rollStock) <= numStr(p.minStock),
+    stockValue: numStr(p.kgStock) * numStr(p.pricePerKg),
+    isLowStock: numStr(p.kratStock) <= numStr(p.minStock),
   }));
 
   res.json({

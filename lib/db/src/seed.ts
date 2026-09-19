@@ -2,227 +2,249 @@ import { db } from "./index";
 import { 
   unitsTable, categoriesTable, productsTable, suppliersTable, customersTable, 
   purchasesTable, purchaseItemsTable, stockMutationsTable, cashEntriesTable,
-  salesTable, saleItemsTable, payablesTable, receivablesTable
+  salesTable, saleItemsTable, payablesTable, receivablesTable, usersTable,
+  paymentMethodsTable, settingsTable
 } from "./schema";
 import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 async function runSeed() {
-  console.log("Mulai proses seeding data dummy...");
+  console.log("Mulai proses seeding data gudang buah...");
+
+  // 0. User Admin
+  console.log("Membuat User Admin...");
+  const passwordHash = await bcrypt.hash("admin123", 10);
+  await db.insert(usersTable).values([
+    { username: "admin", passwordHash, fullName: "Administrator", role: "admin" },
+  ]).onConflictDoNothing();
+
+  // 0b. Metode Pembayaran
+  console.log("Membuat Metode Pembayaran...");
+  await db.insert(paymentMethodsTable).values([
+    { code: "tunai", name: "Tunai", isActive: true, sortOrder: 1 },
+    { code: "transfer", name: "Transfer Bank", isActive: true, sortOrder: 2 },
+    { code: "tempo", name: "Tempo (Kredit)", isActive: true, sortOrder: 3 },
+  ]).onConflictDoNothing();
+
+  // 0c. Settings
+  console.log("Membuat Pengaturan...");
+  await db.insert(settingsTable).values([
+    { key: "store_name", value: "Gudang Buah Segar", description: "Nama Toko/Gudang" },
+    { key: "store_address", value: "Jl. Raya Buah No. 1", description: "Alamat Toko" },
+    { key: "store_phone", value: "08123456789", description: "No. Telepon Toko" },
+  ]).onConflictDoNothing();
 
   // 1. Satuan
   console.log("Membuat Satuan...");
   await db.insert(unitsTable).values([
-    { name: "METER", symbol: "m" },
-    { name: "YARD", symbol: "yds" },
-    { name: "KILOGRAM", symbol: "kg" },
-    { name: "ROLL", symbol: "roll" },
+    { name: "KG", symbol: "kg" },
+    { name: "KRAT", symbol: "krat" },
+    { name: "BOX", symbol: "box" },
+    { name: "KARUNG", symbol: "krg" },
     { name: "PCS", symbol: "pcs" },
-    { name: "BAL", symbol: "bal" },
-  ]);
+    { name: "TON", symbol: "ton" },
+  ]).onConflictDoNothing();
 
-  // 1. Kategori
+  // 2. Kategori Buah
   console.log("Membuat Kategori...");
-  const [catKatun, catSatin, catDenim] = await db.insert(categoriesTable).values([
-    { name: "Kain Katun", description: "Bahan katun adem" },
-    { name: "Kain Satin", description: "Bahan mengkilap halus" },
-    { name: "Kain Denim", description: "Bahan jeans tebal" },
+  const [catLokal, catImpor, catSayur] = await db.insert(categoriesTable).values([
+    { name: "Buah Lokal", description: "Buah-buahan hasil produksi dalam negeri" },
+    { name: "Buah Impor", description: "Buah-buahan dari luar negeri" },
+    { name: "Sayuran", description: "Berbagai jenis sayuran segar" },
   ]).returning();
 
-  // 2. Produk
-  console.log("Membuat Produk...");
+  // 3. Produk Buah
+  console.log("Membuat Produk Buah...");
   const products = await db.insert(productsTable).values([
-    { name: "Katun Jepang Putih", categoryId: catKatun.id, barcode: "11111111", primaryUnit: "METER", secondaryUnit: "ROLL", pricePerMeter: "35000", pricePerRoll: "2000000", rollStock: "0", meterStock: "0", minStock: "5", lotNumber: "LT-001", rackLocation: "A1" },
-    { name: "Katun Jepang Hitam", categoryId: catKatun.id, barcode: "22222222", primaryUnit: "METER", secondaryUnit: "ROLL", pricePerMeter: "35000", pricePerRoll: "2000000", rollStock: "0", meterStock: "0", minStock: "5", lotNumber: "LT-002", rackLocation: "A2" },
-    { name: "Satin Velvet Merah", categoryId: catSatin.id, barcode: "33333333", primaryUnit: "YARD", secondaryUnit: "ROLL", pricePerMeter: "45000", pricePerRoll: "2500000", rollStock: "0", meterStock: "0", minStock: "5", lotNumber: "LT-003", rackLocation: "B1" },
-    { name: "Denim Premium Blue", categoryId: catDenim.id, barcode: "44444444", primaryUnit: "KG", secondaryUnit: "BAL", pricePerMeter: "65000", pricePerRoll: "4000000", rollStock: "0", meterStock: "0", minStock: "5", lotNumber: "LT-004", rackLocation: "C1" },
+    { name: "Apel Fuji", categoryId: catImpor.id, barcode: "11111111", primaryUnit: "KG", secondaryUnit: "KRAT", pricePerKg: "28000", pricePerKrat: "350000", costPricePerKg: "22000", costPricePerKrat: "280000", kratStock: "0", kgStock: "0", minStock: "50", rackLocation: "A1" },
+    { name: "Jeruk Mandarin", categoryId: catImpor.id, barcode: "22222222", primaryUnit: "KG", secondaryUnit: "KRAT", pricePerKg: "25000", pricePerKrat: "300000", costPricePerKg: "20000", costPricePerKrat: "240000", kratStock: "0", kgStock: "0", minStock: "50", rackLocation: "A2" },
+    { name: "Mangga Harum Manis", categoryId: catLokal.id, barcode: "33333333", primaryUnit: "KG", secondaryUnit: "KRAT", pricePerKg: "18000", pricePerKrat: "200000", costPricePerKg: "13000", costPricePerKrat: "150000", kratStock: "0", kgStock: "0", minStock: "30", rackLocation: "B1" },
+    { name: "Semangka", categoryId: catLokal.id, barcode: "44444444", primaryUnit: "KG", secondaryUnit: "KRAT", pricePerKg: "8000", pricePerKrat: "120000", costPricePerKg: "5000", costPricePerKrat: "80000", kratStock: "0", kgStock: "0", minStock: "100", rackLocation: "B2" },
+    { name: "Anggur Hijau", categoryId: catImpor.id, barcode: "55555555", primaryUnit: "KG", secondaryUnit: "BOX", pricePerKg: "45000", pricePerKrat: "180000", costPricePerKg: "38000", costPricePerKrat: "150000", kratStock: "0", kgStock: "0", minStock: "20", rackLocation: "C1" },
+    { name: "Pisang Cavendish", categoryId: catLokal.id, barcode: "66666666", primaryUnit: "KG", secondaryUnit: "KRAT", pricePerKg: "12000", pricePerKrat: "150000", costPricePerKg: "9000", costPricePerKrat: "110000", kratStock: "0", kgStock: "0", minStock: "50", rackLocation: "C2" },
   ]).returning();
 
-  // 3. Supplier
+  // 4. Supplier
   console.log("Membuat Supplier...");
-  const [sup1] = await db.insert(suppliersTable).values([
-    { name: "PT Maju Tekstil", phone: "081111111", address: "Bandung" },
-    { name: "CV Kain Berkah", phone: "082222222", address: "Jakarta" },
+  const [sup1, sup2] = await db.insert(suppliersTable).values([
+    { name: "UD Sumber Buah", phone: "081111111111", address: "Pasar Induk Kramat Jati, Jakarta", contactPerson: "Pak Budi" },
+    { name: "CV Impor Buah Segar", phone: "082222222222", address: "Tanjung Priok, Jakarta", contactPerson: "Pak Hendra" },
   ]).returning();
 
-  // 4. Pelanggan
+  // 5. Pelanggan
   console.log("Membuat Pelanggan...");
   const [cust1, cust2] = await db.insert(customersTable).values([
-    { name: "Butik Indah", phone: "083333333", address: "Surabaya", creditLimit: "10000000" },
-    { name: "Penjahit Yanto", phone: "084444444", address: "Semarang", creditLimit: "5000000" },
+    { name: "Supermarket Segar", phone: "083333333333", address: "Jl. Sudirman No. 10, Jakarta", creditLimit: "20000000" },
+    { name: "Warung Buah Pak Joko", phone: "084444444444", address: "Pasar Baru, Bogor", creditLimit: "5000000" },
+    { name: "Hotel Grand Palace", phone: "085555555555", address: "Jl. Gatot Subroto, Jakarta", creditLimit: "50000000" },
   ]).returning();
 
-  // 5. Transaksi Pembelian (Restock semua barang)
-  console.log("Mencatat Pembelian (Stok Masuk)...");
-  const [purchase] = await db.insert(purchasesTable).values({
-    invoiceNumber: "INV-PUR-" + Date.now(),
+  // 6. Stok Masuk - Pembelian Awal
+  console.log("Mencatat Pembelian/Stok Masuk Awal...");
+  const now = new Date();
+  const expiry14days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const expiry7days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  const [purchase1] = await db.insert(purchasesTable).values({
+    invoiceNumber: "PB-" + Date.now(),
     supplierId: sup1.id,
     paymentType: "tunai",
-    totalAmount: "42000000",
-    paidAmount: "42000000",
+    totalAmount: "25000000",
+    paidAmount: "25000000",
     status: "lunas"
   }).returning();
 
   for (const p of products) {
-    // Beli 10 roll (misal 1 roll = 60 meter)
     await db.insert(purchaseItemsTable).values({
-      purchaseId: purchase.id,
+      purchaseId: purchase1.id,
       productId: p.id,
-      rolls: "10",
-      meters: "600",
-      pricePerMeter: "25000",
-      subtotal: "15000000"
+      krats: "20",
+      kgs: "250",
+      pricePerKg: p.costPricePerKg ?? "10000",
+      subtotal: String(parseFloat(p.costPricePerKg ?? "10000") * 250),
     });
 
-    // Mutasi
     await db.insert(stockMutationsTable).values({
       productId: p.id,
       type: "masuk",
-      rolls: "10",
-      meters: "600",
-      description: "Pembelian awal stok",
-      reference: purchase.invoiceNumber
+      krats: "20",
+      kgs: "250",
+      description: "Stok awal masuk",
+      reference: purchase1.invoiceNumber
     });
 
-    // Update stok produk (10 roll)
     await db.update(productsTable)
-      .set({ rollStock: "10", meterStock: "600" })
+      .set({ kratStock: "20", kgStock: "250" })
       .where(eq(productsTable.id, p.id));
   }
 
-  // Kas keluar
   await db.insert(cashEntriesTable).values({
     type: "keluar",
-    amount: "42000000",
-    description: "Pembayaran tunai pembelian supplier",
-    reference: purchase.invoiceNumber
+    amount: "25000000",
+    description: "Pembayaran tunai pembelian buah awal",
+    reference: purchase1.invoiceNumber
   });
 
-  // 6. Transaksi Penjualan
-  console.log("Mencatat Penjualan...");
+  // 7. Penjualan Tunai
+  console.log("Mencatat Penjualan Tunai...");
   const [sale1] = await db.insert(salesTable).values({
-    invoiceNumber: "INV-SAL-" + Date.now(),
+    invoiceNumber: "PJ-" + Date.now(),
     customerId: cust1.id,
     paymentType: "tunai",
-    totalAmount: "2000000",
-    paidAmount: "2000000",
+    totalAmount: "7000000",
+    paidAmount: "7000000",
     status: "lunas"
   }).returning();
 
   await db.insert(saleItemsTable).values({
     saleId: sale1.id,
-    productId: products[0].id, // Katun Putih
-    rolls: "1",
-    meters: "60",
-    pricePerMeter: "35000",
-    subtotal: "2000000"
+    productId: products[0].id,
+    krats: "5",
+    kgs: "62.5",
+    pricePerKg: products[0].pricePerKg ?? "28000",
+    subtotal: "1750000"
   });
 
   await db.insert(stockMutationsTable).values({
     productId: products[0].id,
     type: "keluar",
-    rolls: "1",
-    meters: "60",
-    description: "Penjualan tunai",
+    krats: "5",
+    kgs: "62.5",
+    description: "Penjualan ke Supermarket Segar",
     reference: sale1.invoiceNumber
   });
 
-  // Update stok (berkurang 1 roll / 60 meter)
   await db.update(productsTable)
-    .set({ rollStock: "9", meterStock: "540" })
+    .set({ kratStock: "15", kgStock: "187.5" })
     .where(eq(productsTable.id, products[0].id));
 
-  // Kas masuk
   await db.insert(cashEntriesTable).values({
     type: "masuk",
-    amount: "2000000",
-    description: "Penerimaan tunai penjualan ke Butik Indah",
+    amount: "7000000",
+    description: "Penerimaan tunai penjualan buah ke Supermarket Segar",
     reference: sale1.invoiceNumber
   });
 
-  // 7. Transaksi Pembelian Tempo (Menciptakan HUTANG)
-  console.log("Mencatat Hutang (Pembelian Tempo)...");
+  // 8. Pembelian Tempo (Hutang)
+  console.log("Mencatat Hutang...");
   const [purchaseTempo] = await db.insert(purchasesTable).values({
-    invoiceNumber: "INV-PUR-" + (Date.now() + 1),
-    supplierId: sup1.id,
+    invoiceNumber: "PB-TEMPO-" + Date.now(),
+    supplierId: sup2.id,
     paymentType: "tempo",
-    totalAmount: "15000000",
+    totalAmount: "12000000",
     paidAmount: "0",
     status: "tempo",
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Jatuh tempo 7 hari
+    dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
   }).returning();
 
   await db.insert(purchaseItemsTable).values({
     purchaseId: purchaseTempo.id,
-    productId: products[1].id,
-    rolls: "5",
-    meters: "300",
-    pricePerMeter: "25000",
-    subtotal: "7500000"
+    productId: products[4].id, // Anggur Hijau
+    krats: "10",
+    kgs: "40",
+    pricePerKg: "38000",
+    subtotal: "1520000"
   });
 
   await db.insert(payablesTable).values({
     purchaseId: purchaseTempo.id,
-    supplierId: sup1.id,
-    totalAmount: "15000000",
+    supplierId: sup2.id,
+    totalAmount: "12000000",
     paidAmount: "0",
     status: "unpaid",
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
   });
 
-  // 8. Transaksi Penjualan Tempo (Menciptakan PIUTANG)
-  console.log("Mencatat Piutang (Penjualan Tempo)...");
+  // 9. Penjualan Tempo (Piutang)
+  console.log("Mencatat Piutang...");
   const [saleTempo] = await db.insert(salesTable).values({
-    invoiceNumber: "INV-SAL-" + (Date.now() + 1),
+    invoiceNumber: "PJ-TEMPO-" + Date.now(),
     customerId: cust2.id,
     paymentType: "tempo",
-    totalAmount: "8500000",
+    totalAmount: "3000000",
     paidAmount: "0",
     status: "tempo",
-    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // Jatuh tempo 14 hari
+    dueDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
   }).returning();
 
   await db.insert(saleItemsTable).values({
     saleId: saleTempo.id,
-    productId: products[2].id,
-    rolls: "2",
-    meters: "120",
-    pricePerMeter: "45000",
-    subtotal: "5400000"
+    productId: products[2].id, // Mangga
+    krats: "5",
+    kgs: "55",
+    pricePerKg: "18000",
+    subtotal: "990000"
   });
 
   await db.insert(receivablesTable).values({
     saleId: saleTempo.id,
     customerId: cust2.id,
-    totalAmount: "8500000",
+    totalAmount: "3000000",
     paidAmount: "0",
     status: "unpaid",
-    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    dueDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
   });
 
-  // 9. Transaksi Penjualan Masif (Histori 30 Hari Terakhir & Hari Ini)
-  console.log("Mencatat Histori Transaksi Penjualan Masif untuk Grafik & Laporan...");
+  // 10. Histori Transaksi 30 Hari untuk Grafik
+  console.log("Mencatat Histori Penjualan 30 hari (untuk grafik & laporan)...");
   const today = new Date();
-  
-  for (let i = 0; i <= 30; i++) {
-    // Generate 1-3 transaksi per hari (untuk hari ini kita buat lebih banyak)
-    const numSales = i === 0 ? 5 : Math.floor(Math.random() * 3) + 1;
-    
+
+  for (let i = 1; i <= 30; i++) {
+    const numSales = Math.floor(Math.random() * 4) + 1;
     for (let j = 0; j < numSales; j++) {
-      // Mundur i hari ke belakang
       const txDate = new Date(today);
       txDate.setDate(today.getDate() - i);
-      txDate.setHours(Math.floor(Math.random() * 10) + 8); // Jam 8 pagi - 6 sore
+      txDate.setHours(Math.floor(Math.random() * 10) + 8);
 
       const randProduct = products[Math.floor(Math.random() * products.length)];
-      const isCust1 = Math.random() > 0.5;
-      const randCustomer = isCust1 ? cust1 : cust2;
-      const randRolls = Math.floor(Math.random() * 3) + 1;
-      const meters = randRolls * 60;
-      const pricePerMeter = Number(randProduct.pricePerMeter);
-      const subtotal = meters * pricePerMeter;
+      const randCustomer = Math.random() > 0.5 ? cust1 : cust2;
+      const randKrats = Math.floor(Math.random() * 5) + 1;
+      const kgsVal = randKrats * 12.5;
+      const pricePerKg = parseFloat(randProduct.pricePerKg ?? "20000");
+      const subtotal = kgsVal * pricePerKg;
 
       const [bulkSale] = await db.insert(salesTable).values({
-        invoiceNumber: `INV-H-${i}-${j}-${Math.floor(Math.random() * 1000)}`,
+        invoiceNumber: `PJ-H${i}-${j}-${Math.floor(Math.random() * 9999)}`,
         customerId: randCustomer.id,
         paymentType: "tunai",
         totalAmount: subtotal.toString(),
@@ -235,24 +257,24 @@ async function runSeed() {
       await db.insert(saleItemsTable).values({
         saleId: bulkSale.id,
         productId: randProduct.id,
-        rolls: randRolls.toString(),
-        meters: meters.toString(),
-        pricePerMeter: pricePerMeter.toString(),
+        krats: randKrats.toString(),
+        kgs: kgsVal.toString(),
+        pricePerKg: pricePerKg.toString(),
         subtotal: subtotal.toString()
       });
 
-      // Kas masuk
       await db.insert(cashEntriesTable).values({
         type: "masuk",
         amount: subtotal.toString(),
-        description: `Penjualan tunai ${bulkSale.invoiceNumber}`,
+        description: `Penjualan buah ${bulkSale.invoiceNumber}`,
         reference: bulkSale.invoiceNumber,
         createdAt: txDate
       });
     }
   }
 
-  console.log("Data dummy masif berhasil diisi! Semua grafik dan laporan siap digunakan.");
+  console.log("\n✅ Seeding data gudang buah selesai!");
+  console.log("   Login: admin / admin123");
   process.exit(0);
 }
 

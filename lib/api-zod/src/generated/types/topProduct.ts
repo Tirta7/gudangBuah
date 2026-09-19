@@ -9,7 +9,7 @@
 export interface TopProduct {
   productId: number;
   productName: string;
-  totalRolls: number;
-  totalMeters: number;
+  totalKrats: number;
+  totalKgs: number;
   totalRevenue: number;
 }

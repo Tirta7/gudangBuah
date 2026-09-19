@@ -39,18 +39,18 @@ export const productsTable = pgTable("products", {
   name: text("name").notNull(),
   categoryId: integer("category_id").references(() => categoriesTable.id),
   barcode: text("barcode").notNull().default(""),
-  primaryUnit: text("primary_unit").notNull().default("METER"),
-  secondaryUnit: text("secondary_unit").notNull().default("ROLL"),
+  primaryUnit: text("primary_unit").notNull().default("KG"),
+  secondaryUnit: text("secondary_unit").notNull().default("KRAT"),
   lotNumber: text("lot_number").notNull().default(""),
   rackLocation: text("rack_location").notNull().default(""),
   imageUrl: text("image_url"),
   description: text("description"),
-  pricePerMeter: numeric("price_per_meter", { precision: 15, scale: 2 }).notNull().default("0"),
-  pricePerRoll: numeric("price_per_roll", { precision: 15, scale: 2 }),
-  costPricePerMeter: numeric("cost_price_per_meter", { precision: 15, scale: 2 }).notNull().default("0"),
-  costPricePerRoll: numeric("cost_price_per_roll", { precision: 15, scale: 2 }),
-  rollStock: numeric("roll_stock", { precision: 12, scale: 4 }).notNull().default("0"),
-  meterStock: numeric("meter_stock", { precision: 12, scale: 4 }).notNull().default("0"),
+  pricePerKg: numeric("price_per_kg", { precision: 15, scale: 2 }).notNull().default("0"),
+  pricePerKrat: numeric("price_per_krat", { precision: 15, scale: 2 }),
+  costPricePerKg: numeric("cost_price_per_kg", { precision: 15, scale: 2 }).notNull().default("0"),
+  costPricePerKrat: numeric("cost_price_per_krat", { precision: 15, scale: 2 }),
+  kratStock: numeric("krat_stock", { precision: 12, scale: 4 }).notNull().default("0"),
+  kgStock: numeric("kg_stock", { precision: 12, scale: 4 }).notNull().default("0"),
   minStock: numeric("min_stock", { precision: 12, scale: 4 }).notNull().default("0"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -60,21 +60,23 @@ export const insertProductSchema = createInsertSchema(productsTable).omit({ id: 
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof productsTable.$inferSelect;
 
-// Product Rolls (Detail Stiker per Barang)
-export const productRollsTable = pgTable("product_rolls", {
+// Product Batches (Detail Stiker per Batch/Box)
+export const productBatchesTable = pgTable("product_batches", {
   id: serial("id").primaryKey(),
   productId: integer("product_id").notNull().references(() => productsTable.id),
   barcode: text("barcode").notNull().unique(),
-  originalLength: numeric("original_length", { precision: 12, scale: 4 }).notNull().default("0"),
-  currentLength: numeric("current_length", { precision: 12, scale: 4 }).notNull().default("0"),
+  originalWeight: numeric("original_weight", { precision: 12, scale: 4 }).notNull().default("0"),
+  currentWeight: numeric("current_weight", { precision: 12, scale: 4 }).notNull().default("0"),
   status: text("status").notNull().default("available"), // available, empty
+  entryDate: timestamp("entry_date").defaultNow(),
+  expiryDate: timestamp("expiry_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertProductRollSchema = createInsertSchema(productRollsTable).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertProductRoll = z.infer<typeof insertProductRollSchema>;
-export type ProductRoll = typeof productRollsTable.$inferSelect;
+export const insertProductBatchSchema = createInsertSchema(productBatchesTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertProductBatch = z.infer<typeof insertProductBatchSchema>;
+export type ProductBatch = typeof productBatchesTable.$inferSelect;
 
 // Customers (Pelanggan)
 export const customersTable = pgTable("customers", {
@@ -130,10 +132,10 @@ export const saleItemsTable = pgTable("sale_items", {
   id: serial("id").primaryKey(),
   saleId: integer("sale_id").notNull().references(() => salesTable.id),
   productId: integer("product_id").notNull().references(() => productsTable.id),
-  rollId: integer("roll_id").references(() => productRollsTable.id),
-  rolls: numeric("rolls", { precision: 12, scale: 4 }).notNull().default("0"),
-  meters: numeric("meters", { precision: 12, scale: 4 }).notNull().default("0"),
-  pricePerMeter: numeric("price_per_meter", { precision: 15, scale: 2 }).notNull().default("0"),
+  batchId: integer("batch_id").references(() => productBatchesTable.id),
+  krats: numeric("krats", { precision: 12, scale: 4 }).notNull().default("0"),
+  kgs: numeric("kgs", { precision: 12, scale: 4 }).notNull().default("0"),
+  pricePerKg: numeric("price_per_kg", { precision: 15, scale: 2 }).notNull().default("0"),
   subtotal: numeric("subtotal", { precision: 15, scale: 2 }).notNull().default("0"),
 });
 
@@ -165,12 +167,12 @@ export const purchaseItemsTable = pgTable("purchase_items", {
   id: serial("id").primaryKey(),
   purchaseId: integer("purchase_id").notNull().references(() => purchasesTable.id),
   productId: integer("product_id").notNull().references(() => productsTable.id),
-  rollId: integer("roll_id").references(() => productRollsTable.id),
-  rolls: numeric("rolls", { precision: 12, scale: 4 }).notNull().default("0"),
-  meters: numeric("meters", { precision: 12, scale: 4 }).notNull().default("0"),
-  pricePerMeter: numeric("price_per_meter", { precision: 15, scale: 2 }).notNull().default("0"),
+  batchId: integer("batch_id").references(() => productBatchesTable.id),
+  krats: numeric("krats", { precision: 12, scale: 4 }).notNull().default("0"),
+  kgs: numeric("kgs", { precision: 12, scale: 4 }).notNull().default("0"),
+  pricePerKg: numeric("price_per_kg", { precision: 15, scale: 2 }).notNull().default("0"),
   subtotal: numeric("subtotal", { precision: 15, scale: 2 }).notNull().default("0"),
-  rollLengthsJson: text("roll_lengths_json"), // JSON array of individual roll lengths, saved before rolls are deleted
+  batchWeightsJson: text("batch_weights_json"), // JSON array of individual batch weights, saved before batches are deleted
 });
 
 export const insertPurchaseItemSchema = createInsertSchema(purchaseItemsTable).omit({ id: true });
@@ -181,10 +183,10 @@ export type PurchaseItem = typeof purchaseItemsTable.$inferSelect;
 export const stockMutationsTable = pgTable("stock_mutations", {
   id: serial("id").primaryKey(),
   productId: integer("product_id").notNull().references(() => productsTable.id),
-  rollId: integer("roll_id").references(() => productRollsTable.id),
+  batchId: integer("batch_id").references(() => productBatchesTable.id),
   type: text("type").notNull(),
-  rolls: numeric("rolls", { precision: 12, scale: 4 }).notNull().default("0"),
-  meters: numeric("meters", { precision: 12, scale: 4 }).notNull().default("0"),
+  krats: numeric("krats", { precision: 12, scale: 4 }).notNull().default("0"),
+  kgs: numeric("kgs", { precision: 12, scale: 4 }).notNull().default("0"),
   description: text("description").notNull(),
   reference: text("reference"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -327,10 +329,10 @@ export const returnReturnedItemsTable = pgTable("return_returned_items", {
   id: serial("id").primaryKey(),
   returnId: integer("return_id").notNull().references(() => returnsTable.id),
   productId: integer("product_id").notNull().references(() => productsTable.id),
-  rollId: integer("roll_id").references(() => productRollsTable.id),
-  rolls: numeric("rolls", { precision: 12, scale: 4 }).notNull().default("0"),
-  meters: numeric("meters", { precision: 12, scale: 4 }).notNull().default("0"),
-  pricePerMeter: numeric("price_per_meter", { precision: 15, scale: 2 }).notNull().default("0"),
+  batchId: integer("batch_id").references(() => productBatchesTable.id),
+  krats: numeric("krats", { precision: 12, scale: 4 }).notNull().default("0"),
+  kgs: numeric("kgs", { precision: 12, scale: 4 }).notNull().default("0"),
+  pricePerKg: numeric("price_per_kg", { precision: 15, scale: 2 }).notNull().default("0"),
   subtotal: numeric("subtotal", { precision: 15, scale: 2 }).notNull().default("0"),
 });
 
@@ -343,10 +345,10 @@ export const returnExchangedItemsTable = pgTable("return_exchanged_items", {
   id: serial("id").primaryKey(),
   returnId: integer("return_id").notNull().references(() => returnsTable.id),
   productId: integer("product_id").notNull().references(() => productsTable.id),
-  rollId: integer("roll_id").references(() => productRollsTable.id),
-  rolls: numeric("rolls", { precision: 12, scale: 4 }).notNull().default("0"),
-  meters: numeric("meters", { precision: 12, scale: 4 }).notNull().default("0"),
-  pricePerMeter: numeric("price_per_meter", { precision: 15, scale: 2 }).notNull().default("0"),
+  batchId: integer("batch_id").references(() => productBatchesTable.id),
+  krats: numeric("krats", { precision: 12, scale: 4 }).notNull().default("0"),
+  kgs: numeric("kgs", { precision: 12, scale: 4 }).notNull().default("0"),
+  pricePerKg: numeric("price_per_kg", { precision: 15, scale: 2 }).notNull().default("0"),
   subtotal: numeric("subtotal", { precision: 15, scale: 2 }).notNull().default("0"),
 });
 

@@ -155,7 +155,7 @@ export default function Hutang() {
         </div>
       </div>
 
-      {/* Scrollable List */}
+      {/* scrollable List */}
       <div className="flex-1 overflow-auto min-h-0 pb-10">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-w-0">
           {isLoading ? (

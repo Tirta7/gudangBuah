@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { productsTable, categoriesTable, productRollsTable } from "@workspace/db";
+import { productsTable, categoriesTable, productBatchesTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 
 const router = Router();
@@ -33,10 +33,10 @@ router.get("/shop/products", async (req, res): Promise<void> => {
       description: productsTable.description,
       primaryUnit: productsTable.primaryUnit,
       secondaryUnit: productsTable.secondaryUnit,
-      pricePerMeter: productsTable.pricePerMeter,
-      pricePerRoll: productsTable.pricePerRoll,
-      rollStock: productsTable.rollStock,
-      meterStock: productsTable.meterStock,
+      pricePerKg: productsTable.pricePerKg,
+      pricePerKrat: productsTable.pricePerKrat,
+      kratStock: productsTable.kratStock,
+      kgStock: productsTable.kgStock,
     })
     .from(productsTable)
     .leftJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
@@ -44,11 +44,11 @@ router.get("/shop/products", async (req, res): Promise<void> => {
 
   let result = baseProducts.map(p => ({
     ...p,
-    pricePerMeter: parseFloat(p.pricePerMeter ?? "0"),
-    pricePerRoll: p.pricePerRoll ? parseFloat(p.pricePerRoll) : null,
-    rollStock: parseFloat(p.rollStock ?? "0"),
-    meterStock: parseFloat(p.meterStock ?? "0"),
-    inStock: parseFloat(p.rollStock ?? "0") > 0,
+    pricePerKg: parseFloat(p.pricePerKg ?? "0"),
+    pricePerKrat: p.pricePerKrat ? parseFloat(p.pricePerKrat) : null,
+    kratStock: parseFloat(p.kratStock ?? "0"),
+    kgStock: parseFloat(p.kgStock ?? "0"),
+    inStock: parseFloat(p.kratStock ?? "0") > 0,
   }));
 
   if (categoryId) {
@@ -76,10 +76,10 @@ router.get("/shop/products/:id", async (req, res): Promise<void> => {
       description: productsTable.description,
       primaryUnit: productsTable.primaryUnit,
       secondaryUnit: productsTable.secondaryUnit,
-      pricePerMeter: productsTable.pricePerMeter,
-      pricePerRoll: productsTable.pricePerRoll,
-      rollStock: productsTable.rollStock,
-      meterStock: productsTable.meterStock,
+      pricePerKg: productsTable.pricePerKg,
+      pricePerKrat: productsTable.pricePerKrat,
+      kratStock: productsTable.kratStock,
+      kgStock: productsTable.kgStock,
     })
     .from(productsTable)
     .leftJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
@@ -87,22 +87,22 @@ router.get("/shop/products/:id", async (req, res): Promise<void> => {
 
   if (!prod) { res.status(404).json({ error: "Not found" }); return; }
 
-  // Ambil available rolls untuk ditampilkan sebagai variasi ukuran
-  const rolls = await db
+  // Ambil available krats untuk ditampilkan sebagai variasi ukuran
+  const krats = await db
     .select({
-      id: productRollsTable.id,
-      currentLength: productRollsTable.currentLength,
-      barcode: productRollsTable.barcode,
+      id: productBatchesTable.id,
+      currentWeight: productBatchesTable.currentWeight,
+      barcode: productBatchesTable.barcode,
     })
-    .from(productRollsTable)
-    .where(and(eq(productRollsTable.productId, id), eq(productRollsTable.status, "available")))
-    .orderBy(productRollsTable.currentLength);
+    .from(productBatchesTable)
+    .where(and(eq(productBatchesTable.productId, id), eq(productBatchesTable.status, "available")))
+    .orderBy(productBatchesTable.currentWeight);
 
   // Kelompokkan ukuran yang tersedia
   const availableSizes: { length: number; count: number }[] = [];
   const sizeMap: Record<string, number> = {};
-  rolls.forEach(r => {
-    const len = parseFloat(r.currentLength).toFixed(1);
+  krats.forEach(r => {
+    const len = parseFloat(r.currentWeight).toFixed(1);
     sizeMap[len] = (sizeMap[len] || 0) + 1;
   });
   Object.entries(sizeMap).forEach(([len, count]) => {
@@ -112,13 +112,13 @@ router.get("/shop/products/:id", async (req, res): Promise<void> => {
 
   res.json({
     ...prod,
-    pricePerMeter: parseFloat(prod.pricePerMeter ?? "0"),
-    pricePerRoll: prod.pricePerRoll ? parseFloat(prod.pricePerRoll) : null,
-    rollStock: parseFloat(prod.rollStock ?? "0"),
-    meterStock: parseFloat(prod.meterStock ?? "0"),
-    inStock: parseFloat(prod.rollStock ?? "0") > 0,
+    pricePerKg: parseFloat(prod.pricePerKg ?? "0"),
+    pricePerKrat: prod.pricePerKrat ? parseFloat(prod.pricePerKrat) : null,
+    kratStock: parseFloat(prod.kratStock ?? "0"),
+    kgStock: parseFloat(prod.kgStock ?? "0"),
+    inStock: parseFloat(prod.kratStock ?? "0") > 0,
     availableSizes,
-    totalRolls: rolls.length,
+    totalKrats: krats.length,
   });
 });
 

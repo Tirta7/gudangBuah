@@ -5,7 +5,7 @@ import { setupWebSocket } from "./lib/websocket";
 import { startScheduler } from "./lib/scheduler";
 import { pool } from "@workspace/db";
 
-const rawPort = process.env["PORT"] || "8080";
+const rawPort = process.env["PORT"] || "3001";
 const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {

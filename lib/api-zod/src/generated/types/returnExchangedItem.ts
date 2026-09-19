@@ -11,9 +11,9 @@ export interface ReturnExchangedItem {
   returnId?: number;
   productId?: number;
   productName?: string;
-  rollId?: number | null;
-  rolls?: string;
-  meters?: string;
-  pricePerMeter?: string;
+  batchId?: number | null;
+  krats?: string;
+  kgs?: string;
+  pricePerKg?: string;
   subtotal?: string;
 }

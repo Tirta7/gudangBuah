@@ -61,7 +61,7 @@ router.get("/dashboard/summary", async (req, res) => {
   const [lowStock] = await db
     .select({ count: sql<number>`count(*)` })
     .from(productsTable)
-    .where(sql`${productsTable.rollStock} <= ${productsTable.minStock}`);
+    .where(sql`${productsTable.kratStock} <= ${productsTable.minStock}`);
 
   res.json({
     todayRevenue: numStr(todaySales?.revenue),
@@ -132,8 +132,8 @@ router.get("/dashboard/top-products", async (req, res) => {
     .select({
       productId: saleItemsTable.productId,
       productName: productsTable.name,
-      totalRolls: sql<string>`sum(${saleItemsTable.rolls})`,
-      totalMeters: sql<string>`sum(${saleItemsTable.meters})`,
+      totalKrats: sql<string>`sum(${saleItemsTable.krats})`,
+      totalKgs: sql<string>`sum(${saleItemsTable.kgs})`,
       totalRevenue: sql<string>`sum(${saleItemsTable.subtotal})`,
     })
     .from(saleItemsTable)
@@ -147,8 +147,8 @@ router.get("/dashboard/top-products", async (req, res) => {
   res.json(result.map(r => ({
     productId: r.productId,
     productName: r.productName ?? "Unknown",
-    totalRolls: numStr(r.totalRolls),
-    totalMeters: numStr(r.totalMeters),
+    totalKrats: numStr(r.totalKrats),
+    totalKgs: numStr(r.totalKgs),
     totalRevenue: numStr(r.totalRevenue),
   })));
 });

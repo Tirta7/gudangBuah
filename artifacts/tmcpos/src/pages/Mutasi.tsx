@@ -24,8 +24,8 @@ import { DateRangeFilter, filterByDateRange } from "@/components/DateRangeFilter
 const schema = z.object({
   productId: z.number({ required_error: "Barang wajib dipilih" }),
   type: z.enum(["in", "out", "adjustment"]),
-  rolls: z.number().min(0),
-  meters: z.number().min(0),
+  krats: z.number().min(0),
+  kgs: z.number().min(0),
   description: z.string().optional(),
   reference: z.string().optional(),
 });
@@ -54,13 +54,13 @@ export default function Mutasi() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { type: "in", rolls: 0, meters: 0, description: "", reference: "" },
+    defaultValues: { type: "in", krats: 0, kgs: 0, description: "", reference: "" },
   });
 
   const selectedProductId = form.watch("productId");
   const selectedProduct = products?.find(p => p.id === selectedProductId);
-  const primaryUnit = selectedProduct?.primaryUnit || "Meter";
-  const secondaryUnit = selectedProduct?.secondaryUnit || "Roll";
+  const primaryUnit = selectedProduct?.primaryUnit || "Kg";
+  const secondaryUnit = selectedProduct?.secondaryUnit || "Krat";
 
   const createMutation = useCreateMutation({
     mutation: {
@@ -68,7 +68,7 @@ export default function Mutasi() {
         queryClient.invalidateQueries({ queryKey: getListMutationsQueryKey({}) });
         queryClient.invalidateQueries({ queryKey: getListProductsQueryKey({}) });
         setIsOpen(false);
-        form.reset({ type: "in", rolls: 0, meters: 0, description: "", reference: "" });
+        form.reset({ type: "in", krats: 0, kgs: 0, description: "", reference: "" });
         toast({ title: "Mutasi stok berhasil dicatat" });
       }
     }
@@ -115,7 +115,7 @@ export default function Mutasi() {
               <DateRangeFilter onFilter={(from, to) => { setDateFrom(from); setDateTo(to); setCurrentPage(1); }} />
             </div>
             
-            <Button onClick={() => { form.reset({ type: "in", rolls: 0, meters: 0, description: "", reference: "" }); setIsOpen(true); }} className="h-8 px-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-xs font-bold shadow-sm">
+            <Button onClick={() => { form.reset({ type: "in", krats: 0, kgs: 0, description: "", reference: "" }); setIsOpen(true); }} className="h-8 px-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-xs font-bold shadow-sm">
               <Plus className="mr-1.5 h-3 w-3" /> Baru
             </Button>
           </div>
@@ -136,7 +136,7 @@ export default function Mutasi() {
         </div>
       </div>
 
-      {/* Scrollable Table */}
+      {/* scrollable Table */}
       <div className="flex-1 overflow-auto min-h-0">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           {isLoading ? (
@@ -152,8 +152,8 @@ export default function Mutasi() {
                     <th className="text-left py-2.5 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tanggal</th>
                     <th className="text-left py-2.5 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Produk</th>
                     <th className="text-center py-2.5 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tipe</th>
-                    <th className="text-right py-2.5 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Meter/Yd</th>
-                    <th className="text-right py-2.5 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Roll</th>
+                    <th className="text-right py-2.5 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Kg/Yd</th>
+                    <th className="text-right py-2.5 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Krat</th>
                     <th className="text-left py-2.5 px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Keterangan</th>
                   </tr>
                 </thead>
@@ -173,8 +173,8 @@ export default function Mutasi() {
                         <td className="py-2.5 px-3 text-center whitespace-nowrap">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${badgeCls}`}>{cfg?.label}</span>
                         </td>
-                        <td className={`py-2.5 px-3 text-right font-bold text-sm ${m.type === 'keluar' ? 'text-rose-600' : 'text-emerald-600'}`}>{sign}{formatNumber(m.meters)}</td>
-                        <td className={`py-2.5 px-3 text-right text-xs font-medium ${m.type === 'keluar' ? 'text-rose-500' : 'text-emerald-500'}`}>{m.rolls > 0 ? `${sign}${formatNumber(m.rolls)}` : <span className="text-slate-300">—</span>}</td>
+                        <td className={`py-2.5 px-3 text-right font-bold text-sm ${m.type === 'keluar' ? 'text-rose-600' : 'text-emerald-600'}`}>{sign}{formatNumber(m.kgs)}</td>
+                        <td className={`py-2.5 px-3 text-right text-xs font-medium ${m.type === 'keluar' ? 'text-rose-500' : 'text-emerald-500'}`}>{m.krats > 0 ? `${sign}${formatNumber(m.krats)}` : <span className="text-slate-300">—</span>}</td>
                         <td className="py-2.5 px-3 text-xs text-slate-500 italic whitespace-nowrap">
                           {m.description || <span className="text-slate-300">—</span>}
                           {/* Tombol Restore untuk Batal Pembelian */}
@@ -254,10 +254,10 @@ export default function Mutasi() {
                 </FormItem>
               )} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="rolls" render={({ field }) => (
+                <FormField control={form.control} name="krats" render={({ field }) => (
                   <FormItem><FormLabel>Qty ({secondaryUnit.toLowerCase()})</FormLabel><FormControl><Input type="number" step="any" min={0} {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
                 )} />
-                <FormField control={form.control} name="meters" render={({ field }) => (
+                <FormField control={form.control} name="kgs" render={({ field }) => (
                   <FormItem><FormLabel>Qty ({primaryUnit.toLowerCase()})</FormLabel><FormControl><Input type="number" step="any" min={0} {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>

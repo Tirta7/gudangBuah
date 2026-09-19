@@ -1,20 +1,20 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { productsTable, categoriesTable, productRollsTable, saleItemsTable, purchaseItemsTable, purchasesTable, payablesTable } from "@workspace/db";
+import { productsTable, categoriesTable, productBatchesTable, saleItemsTable, purchaseItemsTable, purchasesTable, payablesTable } from "@workspace/db";
 import { eq, ilike, and, lte, sql, inArray, desc } from "drizzle-orm";
-import { CreateProductBody, UpdateProductBody, CreateProductRollBody, UpdateProductRollBody } from "@workspace/api-zod";
+import { CreateProductBody, UpdateProductBody, CreateProductBatchBody, UpdateProductBatchBody } from "@workspace/api-zod";
 import { pushService } from "../lib/push";
 import * as XLSX from "xlsx";
 
 const router = Router();
 
-async function syncProductStockFromRolls(productId: number) {
-  const existingRolls = await db.select().from(productRollsTable).where(and(eq(productRollsTable.productId, productId), eq(productRollsTable.status, "available")));
-  const rollStock = existingRolls.length;
-  const meterStock = existingRolls.reduce((sum, r) => sum + parseFloat(r.currentLength), 0);
+async function syncProductStockFromKrats(productId: number) {
+  const existingKrats = await db.select().from(productBatchesTable).where(and(eq(productBatchesTable.productId, productId), eq(productBatchesTable.status, "available")));
+  const kratStock = existingKrats.length;
+  const kgStock = existingKrats.reduce((sum, r) => sum + parseFloat(r.currentWeight), 0);
   await db.update(productsTable).set({
-    rollStock: String(rollStock),
-    meterStock: String(meterStock)
+    kratStock: String(kratStock),
+    kgStock: String(kgStock)
   }).where(eq(productsTable.id, productId));
 }
 
@@ -38,59 +38,59 @@ async function syncPurchaseTotals(purchaseId: number, keepPaid: boolean = true) 
   } catch (e) { console.error("syncPurchaseTotals error:", e); }
 }
 
-// Helper: After a specific roll is changed/deleted, update ONLY the purchase item that originally created it.
-async function syncPurchaseItemForSpecificRoll(productId: number, modifiedRollId: number) {
+// Helper: After a specific krat is changed/deleted, update ONLY the purchase item that originally created it.
+async function syncPurchaseItemForSpecificKrat(productId: number, modifiedKratId: number) {
   try {
     const purchaseItems = await db.select().from(purchaseItemsTable).where(eq(purchaseItemsTable.productId, productId));
     let targetItem = null;
-    let originalRollIndex = -1;
-    let originalRollCount = 0;
+    let originalKratIndex = -1;
+    let originalKratCount = 0;
     
     for (const item of purchaseItems) {
-      if (!item.rollId) continue;
-      const startRollId = item.rollId as number;
+      if (!item.batchId) continue;
+      const startKratId = item.batchId as number;
       
-      let count = Number(item.rolls) || 0;
-      if (item.rollLengthsJson) {
+      let count = Number(item.krats) || 0;
+      if (item.batchWeightsJson) {
         try {
-          const parsed = JSON.parse(item.rollLengthsJson);
+          const parsed = JSON.parse(item.batchWeightsJson);
           if (Array.isArray(parsed) && parsed.length > count) count = parsed.length;
         } catch(e){}
       }
       
-      if (modifiedRollId >= startRollId && modifiedRollId < startRollId + count) {
+      if (modifiedKratId >= startKratId && modifiedKratId < startKratId + count) {
         targetItem = item;
-        originalRollIndex = modifiedRollId - startRollId;
-        originalRollCount = count;
+        originalKratIndex = modifiedKratId - startKratId;
+        originalKratCount = count;
         break;
       }
     }
     
     if (!targetItem) return; 
     
-    const rollIds = Array.from({ length: originalRollCount }, (_, i) => (targetItem.rollId as number) + i);
-    const existingRolls = await db.select().from(productRollsTable).where(inArray(productRollsTable.id, rollIds));
+    const batchIds = Array.from({ length: originalKratCount }, (_, i) => (targetItem.batchId as number) + i);
+    const existingKrats = await db.select().from(productBatchesTable).where(inArray(productBatchesTable.id, batchIds));
     
-    const rollLengths: number[] = [];
-    for (const rollId of rollIds) {
-      const roll = existingRolls.find(r => r.id === rollId);
-      if (roll) rollLengths.push(parseFloat(roll.currentLength));
+    const batchWeights: number[] = [];
+    for (const batchId of batchIds) {
+      const krat = existingKrats.find(r => r.id === batchId);
+      if (krat) batchWeights.push(parseFloat(krat.currentWeight));
     }
     
-    const newMeters = rollLengths.reduce((a,b) => a + b, 0);
-    const newRolls = rollLengths.length;
-    const pricePerMeter = parseFloat(targetItem.pricePerMeter || "0");
-    const newSubtotal = Math.round(newMeters * pricePerMeter);
+    const newKgs = batchWeights.reduce((a,b) => a + b, 0);
+    const newKrats = batchWeights.length;
+    const pricePerKg = parseFloat(targetItem.pricePerKg || "0");
+    const newSubtotal = Math.round(newKgs * pricePerKg);
     
     await db.update(purchaseItemsTable).set({
-      rollLengthsJson: JSON.stringify(rollLengths),
-      meters: String(newMeters),
-      rolls: String(newRolls),
+      batchWeightsJson: JSON.stringify(batchWeights),
+      kgs: String(newKgs),
+      krats: String(newKrats),
       subtotal: String(newSubtotal)
     } as any).where(eq(purchaseItemsTable.id, targetItem.id));
     
     await syncPurchaseTotals(targetItem.purchaseId, true);
-  } catch (e) { console.error("syncPurchaseItemForSpecificRoll error:", e); }
+  } catch (e) { console.error("syncPurchaseItemForSpecificKrat error:", e); }
 }
 
 router.get("/products", async (req, res): Promise<void> => {
@@ -112,12 +112,12 @@ router.get("/products", async (req, res): Promise<void> => {
       rackLocation: productsTable.rackLocation,
       imageUrl: productsTable.imageUrl,
       description: productsTable.description,
-      costPricePerMeter: productsTable.costPricePerMeter,
-      costPricePerRoll: productsTable.costPricePerRoll,
-      pricePerMeter: productsTable.pricePerMeter,
-      pricePerRoll: productsTable.pricePerRoll,
-      rollStock: productsTable.rollStock,
-      meterStock: productsTable.meterStock,
+      costPricePerKg: productsTable.costPricePerKg,
+      costPricePerKrat: productsTable.costPricePerKrat,
+      pricePerKg: productsTable.pricePerKg,
+      pricePerKrat: productsTable.pricePerKrat,
+      kratStock: productsTable.kratStock,
+      kgStock: productsTable.kgStock,
       minStock: productsTable.minStock,
       createdAt: productsTable.createdAt,
     })
@@ -128,14 +128,14 @@ router.get("/products", async (req, res): Promise<void> => {
 
   const result = products.map(p => ({
     ...p,
-    costPricePerMeter: parseFloat(p.costPricePerMeter ?? "0"),
-    costPricePerRoll: p.costPricePerRoll ? parseFloat(p.costPricePerRoll) : null,
-    pricePerMeter: parseFloat(p.pricePerMeter ?? "0"),
-    pricePerRoll: p.pricePerRoll ? parseFloat(p.pricePerRoll) : null,
-    rollStock: parseFloat(p.rollStock ?? "0"),
-    meterStock: parseFloat(p.meterStock ?? "0"),
+    costPricePerKg: parseFloat(p.costPricePerKg ?? "0"),
+    costPricePerKrat: p.costPricePerKrat ? parseFloat(p.costPricePerKrat) : null,
+    pricePerKg: parseFloat(p.pricePerKg ?? "0"),
+    pricePerKrat: p.pricePerKrat ? parseFloat(p.pricePerKrat) : null,
+    kratStock: parseFloat(p.kratStock ?? "0"),
+    kgStock: parseFloat(p.kgStock ?? "0"),
     minStock: parseFloat(p.minStock ?? "0"),
-    isLowStock: parseFloat(p.rollStock ?? "0") <= parseFloat(p.minStock ?? "0"),
+    isLowStock: parseFloat(p.kratStock ?? "0") <= parseFloat(p.minStock ?? "0"),
   }));
 
   if (lowStock === "true") { res.json(result.filter(p => p.isLowStock)); return; }
@@ -153,12 +153,12 @@ router.get("/products/export", async (req, res): Promise<void> => {
         categoryName: categoriesTable.name,
         primaryUnit: productsTable.primaryUnit,
         secondaryUnit: productsTable.secondaryUnit,
-        costPricePerMeter: productsTable.costPricePerMeter,
-        pricePerMeter: productsTable.pricePerMeter,
-        costPricePerRoll: productsTable.costPricePerRoll,
-        pricePerRoll: productsTable.pricePerRoll,
-        rollStock: productsTable.rollStock,
-        meterStock: productsTable.meterStock,
+        costPricePerKg: productsTable.costPricePerKg,
+        pricePerKg: productsTable.pricePerKg,
+        costPricePerKrat: productsTable.costPricePerKrat,
+        pricePerKrat: productsTable.pricePerKrat,
+        kratStock: productsTable.kratStock,
+        kgStock: productsTable.kgStock,
         minStock: productsTable.minStock,
         description: productsTable.description,
       })
@@ -166,17 +166,17 @@ router.get("/products/export", async (req, res): Promise<void> => {
       .leftJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
       .orderBy(productsTable.name);
 
-    // Get available rolls to populate Roll columns
-    const allAvailableRolls = await db.select().from(productRollsTable).where(eq(productRollsTable.status, "available"));
-    const rollsByProductId = new Map<number, any[]>();
-    for (const r of allAvailableRolls) {
-      if (!rollsByProductId.has(r.productId)) rollsByProductId.set(r.productId, []);
-      rollsByProductId.get(r.productId)!.push(r);
+    // Get available krats to populate Krat columns
+    const allAvailableKrats = await db.select().from(productBatchesTable).where(eq(productBatchesTable.status, "available"));
+    const kratsByProductId = new Map<number, any[]>();
+    for (const r of allAvailableKrats) {
+      if (!kratsByProductId.has(r.productId)) kratsByProductId.set(r.productId, []);
+      kratsByProductId.get(r.productId)!.push(r);
     }
 
-    let maxRolls = 0;
-    for (const [_, rolls] of rollsByProductId) {
-      if (rolls.length > maxRolls) maxRolls = rolls.length;
+    let maxKrats = 0;
+    for (const [_, krats] of kratsByProductId) {
+      if (krats.length > maxKrats) maxKrats = krats.length;
     }
 
     const rows: any[] = [];
@@ -190,20 +190,20 @@ router.get("/products/export", async (req, res): Promise<void> => {
         "Kategori": p.categoryName || "",
         "Unit 1": p.primaryUnit || "",
         "Unit 2": p.secondaryUnit || "",
-        "Stok (Roll)": parseFloat(p.rollStock || "0"),
-        "Stok (Meter)": parseFloat(p.meterStock || "0"),
+        "Stok (Krat)": parseFloat(p.kratStock || "0"),
+        "Stok (Kg)": parseFloat(p.kgStock || "0"),
         "Min Stok": parseFloat(p.minStock || "0"),
       };
 
-      const productRolls = rollsByProductId.get(p.id) || [];
-      for (let i = 1; i <= maxRolls; i++) {
-        row[`Roll ${i}`] = productRolls[i - 1] ? parseFloat(productRolls[i - 1].currentLength) : "";
+      const productBatchs = kratsByProductId.get(p.id) || [];
+      for (let i = 1; i <= maxKrats; i++) {
+        row[`Krat ${i}`] = productBatchs[i - 1] ? parseFloat(productBatchs[i - 1].currentWeight) : "";
       }
 
-      row["Harga Beli (M)"] = parseFloat(p.costPricePerMeter || "0");
-      row["Harga Jual (M)"] = parseFloat(p.pricePerMeter || "0");
-      row["Harga Beli (R)"] = parseFloat(p.costPricePerRoll || "0");
-      row["Harga Jual (R)"] = parseFloat(p.pricePerRoll || "0");
+      row["Harga Beli (M)"] = parseFloat(p.costPricePerKg || "0");
+      row["Harga Jual (M)"] = parseFloat(p.pricePerKg || "0");
+      row["Harga Beli (R)"] = parseFloat(p.costPricePerKrat || "0");
+      row["Harga Jual (R)"] = parseFloat(p.pricePerKrat || "0");
       row["Deskripsi"] = p.description || "";
 
       rows.push(row);
@@ -318,42 +318,42 @@ router.post("/products/import", async (req, res): Promise<void> => {
            existingProd = (await db.select().from(productsTable).where(eq(productsTable.name, name)))[0];
         }
 
-        // Parse rolls
-        const rollLengths: number[] = [];
+        // Parse krats
+        const batchWeights: number[] = [];
         for (const key of Object.keys(row)) {
-          if (key.startsWith("Roll ") && key !== "Roll") {
+          if (key.startsWith("Krat ") && key !== "Krat") {
             const val = parseFloat(String(row[key]).replace(",", "."));
             if (!isNaN(val) && val > 0) {
-               const rollIndexStr = key.replace("Roll ", "").trim();
-               const rollIndex = parseInt(rollIndexStr, 10);
-               if (!isNaN(rollIndex) && rollIndex > 0) {
-                   rollLengths[rollIndex - 1] = val;
+               const kratIndexStr = key.replace("Krat ", "").trim();
+               const kratIndex = parseInt(kratIndexStr, 10);
+               if (!isNaN(kratIndex) && kratIndex > 0) {
+                   batchWeights[kratIndex - 1] = val;
                }
             }
           }
         }
-        const cleanRollLengths = rollLengths.filter(r => r !== undefined);
-        const meterStock = cleanRollLengths.reduce((a, b) => a + b, 0);
-        const rollStock = cleanRollLengths.length;
+        const cleanKratLengths = batchWeights.filter(r => r !== undefined);
+        const kgStock = cleanKratLengths.reduce((a, b) => a + b, 0);
+        const kratStock = cleanKratLengths.length;
 
-        const hasRollColumns = Object.keys(row).some(key => key.startsWith("Roll ") && key !== "Roll");
+        const hasKratColumns = Object.keys(row).some(key => key.startsWith("Krat ") && key !== "Krat");
 
         // Base Data
         const prodData: any = {
           name, barcode, categoryId,
-          primaryUnit: String(row["Unit 1"] || "METER").trim(),
-          secondaryUnit: String(row["Unit 2"] || "ROLL").trim(),
-          costPricePerMeter: String(parseFloat(String(row["Harga Beli (M)"] || "0").replace(",", ".")) || 0),
-          pricePerMeter: String(parseFloat(String(row["Harga Jual (M)"] || "0").replace(",", ".")) || 0),
-          costPricePerRoll: String(parseFloat(String(row["Harga Beli (R)"] || "0").replace(",", ".")) || 0),
-          pricePerRoll: String(parseFloat(String(row["Harga Jual (R)"] || "0").replace(",", ".")) || 0),
+          primaryUnit: String(row["Unit 1"] || "KG").trim(),
+          secondaryUnit: String(row["Unit 2"] || "KRAT").trim(),
+          costPricePerKg: String(parseFloat(String(row["Harga Beli (M)"] || "0").replace(",", ".")) || 0),
+          pricePerKg: String(parseFloat(String(row["Harga Jual (M)"] || "0").replace(",", ".")) || 0),
+          costPricePerKrat: String(parseFloat(String(row["Harga Beli (R)"] || "0").replace(",", ".")) || 0),
+          pricePerKrat: String(parseFloat(String(row["Harga Jual (R)"] || "0").replace(",", ".")) || 0),
           minStock: String(parseFloat(String(row["Min Stok"] || "0").replace(",", ".")) || 0),
           description: String(row["Deskripsi"] || "").trim(),
         };
 
-        if (hasRollColumns) {
-          prodData.rollStock = String(rollStock);
-          prodData.meterStock = String(meterStock);
+        if (hasKratColumns) {
+          prodData.kratStock = String(kratStock);
+          prodData.kgStock = String(kgStock);
         }
 
         let prodId;
@@ -361,42 +361,42 @@ router.post("/products/import", async (req, res): Promise<void> => {
           await db.update(productsTable).set({ ...prodData, updatedAt: new Date() }).where(eq(productsTable.id, existingProd.id));
           prodId = existingProd.id;
         } else {
-          if (!hasRollColumns) {
-            prodData.rollStock = "0";
-            prodData.meterStock = "0";
+          if (!hasKratColumns) {
+            prodData.kratStock = "0";
+            prodData.kgStock = "0";
           }
           const [newProd] = await db.insert(productsTable).values(prodData as any).returning();
           prodId = newProd.id;
         }
 
-        // Hapus & re-insert roll hanya jika Excel memang berisi data Roll
-        if (hasRollColumns) {
+        // Hapus & re-insert krat hanya jika Excel memang berisi data Krat
+        if (hasKratColumns) {
           try {
-            await db.delete(productRollsTable).where(and(eq(productRollsTable.productId, prodId), eq(productRollsTable.status, "available")));
+            await db.delete(productBatchesTable).where(and(eq(productBatchesTable.productId, prodId), eq(productBatchesTable.status, "available")));
           } catch (e) {
-            // Ignore FK errors if we can't delete rolls tied to purchases
+            // Ignore FK errors if we can't delete krats tied to purchases
           }
 
-          if (rollStock > 0) {
+          if (kratStock > 0) {
              const ts = Date.now();
-             const rollsToInsert = cleanRollLengths.map((len, i) => ({
+             const kratsToInsert = cleanKratLengths.map((len, i) => ({
                productId: prodId,
                barcode: `${barcode}-R${ts}-${i + 1}-${Math.floor(Math.random() * 9999)}`,
-               originalLength: String(len),
-               currentLength: String(len),
+               originalWeight: String(len),
+               currentWeight: String(len),
                status: "available"
              }));
-             await db.insert(productRollsTable).values(rollsToInsert as any);
+             await db.insert(productBatchesTable).values(kratsToInsert as any);
           }
           
-          // Sinkronisasi ulang stok di productsTable agar sesuai dengan jumlah roll sebenarnya yang ada di database
-          // (karena mungkin ada roll dari nota pembelian yang gagal dihapus)
-          const actualRolls = await db.select().from(productRollsTable).where(and(eq(productRollsTable.productId, prodId), eq(productRollsTable.status, "available")));
-          const actualRollCount = actualRolls.length;
-          const actualMeterCount = actualRolls.reduce((a, b) => a + (parseFloat(b.currentLength) || 0), 0);
+          // Sinkronisasi ulang stok di productsTable agar sesuai dengan jumlah krat sebenarnya yang ada di database
+          // (karena mungkin ada krat dari nota pembelian yang gagal dihapus)
+          const actualKrats = await db.select().from(productBatchesTable).where(and(eq(productBatchesTable.productId, prodId), eq(productBatchesTable.status, "available")));
+          const actualKratCount = actualKrats.length;
+          const actualKgCount = actualKrats.reduce((a, b) => a + (parseFloat(b.currentWeight) || 0), 0);
           
           await db.update(productsTable)
-            .set({ rollStock: String(actualRollCount), meterStock: String(actualMeterCount) })
+            .set({ kratStock: String(actualKratCount), kgStock: String(actualKgCount) })
             .where(eq(productsTable.id, prodId));
         }
 
@@ -418,47 +418,47 @@ router.post("/products", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const d = parsed.data;
   const barcodeToSave = d.barcode ? d.barcode : `PRD-${Date.now()}`;
-  const { rollLengths: createRollLengths, ...productData } = d;
+  const { batchWeights: createKratLengths, ...productData } = d;
   const [prod] = await db.insert(productsTable).values({
     ...productData,
     barcode: barcodeToSave,
-    primaryUnit: d.primaryUnit || "METER",
-    secondaryUnit: d.secondaryUnit || "ROLL",
-    costPricePerMeter: String(d.costPricePerMeter ?? 0),
-    costPricePerRoll: d.costPricePerRoll != null ? String(d.costPricePerRoll) : null,
-    pricePerMeter: String(d.pricePerMeter ?? 0),
-    pricePerRoll: d.pricePerRoll != null ? String(d.pricePerRoll) : null,
-    rollStock: String(d.rollStock ?? 0),
-    meterStock: String(d.meterStock ?? 0),
+    primaryUnit: d.primaryUnit || "KG",
+    secondaryUnit: d.secondaryUnit || "KRAT",
+    costPricePerKg: String(d.costPricePerKg ?? 0),
+    costPricePerKrat: d.costPricePerKrat != null ? String(d.costPricePerKrat) : null,
+    pricePerKg: String(d.pricePerKg ?? 0),
+    pricePerKrat: d.pricePerKrat != null ? String(d.pricePerKrat) : null,
+    kratStock: String(d.kratStock ?? 0),
+    kgStock: String(d.kgStock ?? 0),
     minStock: String(d.minStock ?? 0),
   }).returning();
     
-    const rollStockNum = Math.floor(d.rollStock ?? 0);
-    const meterStockNum = d.meterStock ?? 0;
-    if (rollStockNum > 0) {
-      const rollsToInsert = Array.from({ length: rollStockNum }).map((_, i) => {
-      const lengthToUse = (createRollLengths && createRollLengths[i] != null && createRollLengths[i] > 0)
-        ? createRollLengths[i]
-        : (meterStockNum / rollStockNum);
+    const kratStockNum = Math.floor(d.kratStock ?? 0);
+    const kgStockNum = d.kgStock ?? 0;
+    if (kratStockNum > 0) {
+      const kratsToInsert = Array.from({ length: kratStockNum }).map((_, i) => {
+      const lengthToUse = (createKratLengths && createKratLengths[i] != null && createKratLengths[i] > 0)
+        ? createKratLengths[i]
+        : (kgStockNum / kratStockNum);
         return {
           productId: prod.id,
           barcode: `${prod.barcode}-R${Date.now()}-${i + 1}`,
-          originalLength: String(lengthToUse),
-          currentLength: String(lengthToUse),
+          originalWeight: String(lengthToUse),
+          currentWeight: String(lengthToUse),
           status: "available",
         };
       });
-      await db.insert(productRollsTable).values(rollsToInsert);
+      await db.insert(productBatchesTable).values(kratsToInsert);
     }
     
   res.status(201).json({
     ...prod,
-    costPricePerMeter: parseFloat(prod.costPricePerMeter ?? "0"),
-    costPricePerRoll: prod.costPricePerRoll ? parseFloat(prod.costPricePerRoll) : null,
-    pricePerMeter: parseFloat(prod.pricePerMeter ?? "0"),
-    pricePerRoll: prod.pricePerRoll ? parseFloat(prod.pricePerRoll) : null,
-    rollStock: parseFloat(prod.rollStock ?? "0"),
-    meterStock: parseFloat(prod.meterStock ?? "0"),
+    costPricePerKg: parseFloat(prod.costPricePerKg ?? "0"),
+    costPricePerKrat: prod.costPricePerKrat ? parseFloat(prod.costPricePerKrat) : null,
+    pricePerKg: parseFloat(prod.pricePerKg ?? "0"),
+    pricePerKrat: prod.pricePerKrat ? parseFloat(prod.pricePerKrat) : null,
+    kratStock: parseFloat(prod.kratStock ?? "0"),
+    kgStock: parseFloat(prod.kgStock ?? "0"),
     minStock: parseFloat(prod.minStock ?? "0"),
     isLowStock: false,
     categoryName: null,
@@ -480,12 +480,12 @@ router.get("/products/:id", async (req, res): Promise<void> => {
       rackLocation: productsTable.rackLocation,
       imageUrl: productsTable.imageUrl,
       description: productsTable.description,
-      costPricePerMeter: productsTable.costPricePerMeter,
-      costPricePerRoll: productsTable.costPricePerRoll,
-      pricePerMeter: productsTable.pricePerMeter,
-      pricePerRoll: productsTable.pricePerRoll,
-      rollStock: productsTable.rollStock,
-      meterStock: productsTable.meterStock,
+      costPricePerKg: productsTable.costPricePerKg,
+      costPricePerKrat: productsTable.costPricePerKrat,
+      pricePerKg: productsTable.pricePerKg,
+      pricePerKrat: productsTable.pricePerKrat,
+      kratStock: productsTable.kratStock,
+      kgStock: productsTable.kgStock,
       minStock: productsTable.minStock,
       createdAt: productsTable.createdAt,
     })
@@ -495,29 +495,29 @@ router.get("/products/:id", async (req, res): Promise<void> => {
   if (!prod) { res.status(404).json({ error: "Not found" }); return; }
   res.json({
     ...prod,
-    costPricePerMeter: parseFloat(prod.costPricePerMeter ?? "0"),
-    costPricePerRoll: prod.costPricePerRoll ? parseFloat(prod.costPricePerRoll) : null,
-    pricePerMeter: parseFloat(prod.pricePerMeter ?? "0"),
-    pricePerRoll: prod.pricePerRoll ? parseFloat(prod.pricePerRoll) : null,
-    rollStock: parseFloat(prod.rollStock ?? "0"),
-    meterStock: parseFloat(prod.meterStock ?? "0"),
+    costPricePerKg: parseFloat(prod.costPricePerKg ?? "0"),
+    costPricePerKrat: prod.costPricePerKrat ? parseFloat(prod.costPricePerKrat) : null,
+    pricePerKg: parseFloat(prod.pricePerKg ?? "0"),
+    pricePerKrat: prod.pricePerKrat ? parseFloat(prod.pricePerKrat) : null,
+    kratStock: parseFloat(prod.kratStock ?? "0"),
+    kgStock: parseFloat(prod.kgStock ?? "0"),
     minStock: parseFloat(prod.minStock ?? "0"),
-    isLowStock: parseFloat(prod.rollStock ?? "0") <= parseFloat(prod.minStock ?? "0"),
+    isLowStock: parseFloat(prod.kratStock ?? "0") <= parseFloat(prod.minStock ?? "0"),
   });
 });
 
-router.get("/products/:id/rolls", async (req, res): Promise<void> => {
+router.get("/products/:id/krats", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
-  const rolls = await db
+  const krats = await db
     .select()
-    .from(productRollsTable)
-    .where(and(eq(productRollsTable.productId, id), eq(productRollsTable.status, "available")))
-    .orderBy(productRollsTable.createdAt);
+    .from(productBatchesTable)
+    .where(and(eq(productBatchesTable.productId, id), eq(productBatchesTable.status, "available")))
+    .orderBy(productBatchesTable.createdAt);
   
-  res.json(rolls.map(r => ({
+  res.json(krats.map(r => ({
     ...r,
-    originalLength: parseFloat(r.originalLength),
-    currentLength: parseFloat(r.currentLength),
+    originalWeight: parseFloat(r.originalWeight),
+    currentWeight: parseFloat(r.currentWeight),
     createdAt: r.createdAt.toISOString()
   })));
 });
@@ -537,50 +537,50 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
   if (d.rackLocation != null) updateData.rackLocation = d.rackLocation;
   if (d.imageUrl !== undefined) updateData.imageUrl = d.imageUrl;
   if (d.description !== undefined) updateData.description = d.description;
-  if (d.costPricePerMeter != null) updateData.costPricePerMeter = String(d.costPricePerMeter);
-  if (d.costPricePerRoll != null) updateData.costPricePerRoll = String(d.costPricePerRoll);
-  if (d.pricePerMeter != null) updateData.pricePerMeter = String(d.pricePerMeter);
-  if (d.pricePerRoll != null) updateData.pricePerRoll = String(d.pricePerRoll);
+  if (d.costPricePerKg != null) updateData.costPricePerKg = String(d.costPricePerKg);
+  if (d.costPricePerKrat != null) updateData.costPricePerKrat = String(d.costPricePerKrat);
+  if (d.pricePerKg != null) updateData.pricePerKg = String(d.pricePerKg);
+  if (d.pricePerKrat != null) updateData.pricePerKrat = String(d.pricePerKrat);
   if (d.minStock != null) updateData.minStock = String(d.minStock);
-  if (d.rollStock != null) updateData.rollStock = String(d.rollStock);
-  if (d.meterStock != null) updateData.meterStock = String(d.meterStock);
+  if (d.kratStock != null) updateData.kratStock = String(d.kratStock);
+  if (d.kgStock != null) updateData.kgStock = String(d.kgStock);
   const [prod] = await db.update(productsTable).set(updateData as any).where(eq(productsTable.id, id)).returning();
   if (!prod) { res.status(404).json({ error: "Not found" }); return; }
   
-  // Sync rolls
-  const rollStockNum = Math.floor(parseFloat(prod.rollStock ?? "0"));
-  const meterStockNum = parseFloat(prod.meterStock ?? "0");
-  if (rollStockNum >= 0) {
-    const existingRolls = await db.select().from(productRollsTable).where(eq(productRollsTable.productId, id));
-    const currentRollCount = existingRolls.length;
+  // Sync krats
+  const kratStockNum = Math.floor(parseFloat(prod.kratStock ?? "0"));
+  const kgStockNum = parseFloat(prod.kgStock ?? "0");
+  if (kratStockNum >= 0) {
+    const existingKrats = await db.select().from(productBatchesTable).where(eq(productBatchesTable.productId, id));
+    const currentKratCount = existingKrats.length;
     
-    if (rollStockNum > currentRollCount) {
-      const diff = rollStockNum - currentRollCount;
-      const avgLength = rollStockNum > 0 ? (meterStockNum / rollStockNum) : 0;
-      const updateRollLengths = d.rollLengths;
-      const rollsToInsert = Array.from({ length: diff }).map((_, i) => {
-        // i offset by currentRollCount so rollLengths index aligns with new rolls
-        const offsetIdx = currentRollCount + i;
-        const lengthToUse = (updateRollLengths && updateRollLengths[offsetIdx] != null && updateRollLengths[offsetIdx] > 0)
-          ? updateRollLengths[offsetIdx]
+    if (kratStockNum > currentKratCount) {
+      const diff = kratStockNum - currentKratCount;
+      const avgLength = kratStockNum > 0 ? (kgStockNum / kratStockNum) : 0;
+      const updateKratLengths = d.batchWeights;
+      const kratsToInsert = Array.from({ length: diff }).map((_, i) => {
+        // i offset by currentKratCount so batchWeights index aligns with new krats
+        const offsetIdx = currentKratCount + i;
+        const lengthToUse = (updateKratLengths && updateKratLengths[offsetIdx] != null && updateKratLengths[offsetIdx] > 0)
+          ? updateKratLengths[offsetIdx]
           : avgLength;
         return {
           productId: prod.id,
           barcode: `${prod.barcode || `PRD-${prod.id}`}-R${Date.now()}-${i + 1}`,
-          originalLength: String(lengthToUse),
-          currentLength: String(lengthToUse),
+          originalWeight: String(lengthToUse),
+          currentWeight: String(lengthToUse),
           status: "available",
         };
       });
-      if (rollsToInsert.length > 0) {
-        await db.insert(productRollsTable).values(rollsToInsert);
+      if (kratsToInsert.length > 0) {
+        await db.insert(productBatchesTable).values(kratsToInsert);
       }
-    } else if (rollStockNum < currentRollCount) {
-      const diff = currentRollCount - rollStockNum;
-      const availableRolls = existingRolls.filter(r => r.status === "available").sort((a, b) => b.id - a.id);
-      const rollsToDelete = availableRolls.slice(0, diff).map(r => r.id);
-      if (rollsToDelete.length > 0) {
-        await db.delete(productRollsTable).where(inArray(productRollsTable.id, rollsToDelete));
+    } else if (kratStockNum < currentKratCount) {
+      const diff = currentKratCount - kratStockNum;
+      const availableKrats = existingKrats.filter(r => r.status === "available").sort((a, b) => b.id - a.id);
+      const kratsToDelete = availableKrats.slice(0, diff).map(r => r.id);
+      if (kratsToDelete.length > 0) {
+        await db.delete(productBatchesTable).where(inArray(productBatchesTable.id, kratsToDelete));
       }
     }
   }
@@ -597,14 +597,14 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
 
   res.json({
     ...prod,
-    costPricePerMeter: parseFloat(prod.costPricePerMeter ?? "0"),
-    costPricePerRoll: prod.costPricePerRoll ? parseFloat(prod.costPricePerRoll) : null,
-    pricePerMeter: parseFloat(prod.pricePerMeter ?? "0"),
-    pricePerRoll: prod.pricePerRoll ? parseFloat(prod.pricePerRoll) : null,
-    rollStock: parseFloat(prod.rollStock ?? "0"),
-    meterStock: parseFloat(prod.meterStock ?? "0"),
+    costPricePerKg: parseFloat(prod.costPricePerKg ?? "0"),
+    costPricePerKrat: prod.costPricePerKrat ? parseFloat(prod.costPricePerKrat) : null,
+    pricePerKg: parseFloat(prod.pricePerKg ?? "0"),
+    pricePerKrat: prod.pricePerKrat ? parseFloat(prod.pricePerKrat) : null,
+    kratStock: parseFloat(prod.kratStock ?? "0"),
+    kgStock: parseFloat(prod.kgStock ?? "0"),
     minStock: parseFloat(prod.minStock ?? "0"),
-    isLowStock: parseFloat(prod.rollStock ?? "0") <= parseFloat(prod.minStock ?? "0"),
+    isLowStock: parseFloat(prod.kratStock ?? "0") <= parseFloat(prod.minStock ?? "0"),
     categoryName: null,
   });
 });
@@ -619,9 +619,9 @@ router.delete("/products/:id", async (req, res) => {
   }
 });
 
-router.post("/products/:id/rolls", async (req, res): Promise<void> => {
+router.post("/products/:id/krats", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
-  const parsed = CreateProductRollBody.safeParse(req.body);
+  const parsed = CreateProductBatchBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const d = parsed.data;
   
@@ -629,107 +629,107 @@ router.post("/products/:id/rolls", async (req, res): Promise<void> => {
   if (!prod) { res.status(404).json({ error: "Product not found" }); return; }
 
   const barcodeToSave = d.barcode ? d.barcode : `${prod.barcode || `PRD-${prod.id}`}-R${Date.now()}`;
-  const [newRoll] = await db.insert(productRollsTable).values({
+  const [newKrat] = await db.insert(productBatchesTable).values({
     productId: id,
     barcode: barcodeToSave,
-    originalLength: String(d.originalLength),
-    currentLength: String(d.currentLength),
+    originalWeight: String(d.originalWeight),
+    currentWeight: String(d.currentWeight),
     status: "available",
   }).returning();
   
-  await syncProductStockFromRolls(id);
+  await syncProductStockFromKrats(id);
   
   res.status(201).json({
-    ...newRoll,
-    originalLength: parseFloat(newRoll.originalLength),
-    currentLength: parseFloat(newRoll.currentLength),
-    createdAt: newRoll.createdAt.toISOString()
+    ...newKrat,
+    originalWeight: parseFloat(newKrat.originalWeight),
+    currentWeight: parseFloat(newKrat.currentWeight),
+    createdAt: newKrat.createdAt.toISOString()
   });
 });
 
-router.patch("/products/:id/rolls/:rollId", async (req, res): Promise<void> => {
+router.patch("/products/:id/krats/:batchId", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
-  const rollId = parseInt(req.params.rollId);
-  const parsed = UpdateProductRollBody.safeParse(req.body);
+  const batchId = parseInt(req.params.batchId);
+  const parsed = UpdateProductBatchBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const d = parsed.data;
 
   const updateData: Record<string, unknown> = { updatedAt: new Date() };
   if (d.barcode != null) updateData.barcode = d.barcode;
-  if (d.originalLength != null) updateData.originalLength = String(d.originalLength);
-  if (d.currentLength != null) updateData.currentLength = String(d.currentLength);
+  if (d.originalWeight != null) updateData.originalWeight = String(d.originalWeight);
+  if (d.currentWeight != null) updateData.currentWeight = String(d.currentWeight);
 
-  const [updatedRoll] = await db.update(productRollsTable).set(updateData as any).where(and(eq(productRollsTable.id, rollId), eq(productRollsTable.productId, id))).returning();
-  if (!updatedRoll) { res.status(404).json({ error: "Roll not found" }); return; }
+  const [updatedKrat] = await db.update(productBatchesTable).set(updateData as any).where(and(eq(productBatchesTable.id, batchId), eq(productBatchesTable.productId, id))).returning();
+  if (!updatedKrat) { res.status(404).json({ error: "Krat not found" }); return; }
 
-  await syncProductStockFromRolls(id);
-  await syncPurchaseItemForSpecificRoll(id, rollId);
+  await syncProductStockFromKrats(id);
+  await syncPurchaseItemForSpecificKrat(id, batchId);
 
   res.json({
-    ...updatedRoll,
-    originalLength: parseFloat(updatedRoll.originalLength),
-    currentLength: parseFloat(updatedRoll.currentLength),
-    createdAt: updatedRoll.createdAt.toISOString()
+    ...updatedKrat,
+    originalWeight: parseFloat(updatedKrat.originalWeight),
+    currentWeight: parseFloat(updatedKrat.currentWeight),
+    createdAt: updatedKrat.createdAt.toISOString()
   });
 });
 
-router.delete("/products/:id/rolls/:rollId", async (req, res): Promise<void> => {
+router.delete("/products/:id/krats/:batchId", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
-  const rollId = parseInt(req.params.rollId);
+  const batchId = parseInt(req.params.batchId);
 
   try {
-    // Find the purchase item this roll belongs to before nullifying its rollId
+    // Find the purchase item this krat belongs to before nullifying its batchId
     const purchaseItems = await db.select().from(purchaseItemsTable).where(eq(purchaseItemsTable.productId, id));
     let targetPurchaseItemId = null;
-    let originalRollCountForTarget = 0;
+    let originalKratCountForTarget = 0;
     for (const item of purchaseItems) {
-      if (!item.rollId) continue;
-      const startRollId = item.rollId as number;
-      let count = Number(item.rolls) || 0;
-      if (item.rollLengthsJson) {
+      if (!item.batchId) continue;
+      const startKratId = item.batchId as number;
+      let count = Number(item.krats) || 0;
+      if (item.batchWeightsJson) {
         try {
-          const parsed = JSON.parse(item.rollLengthsJson);
+          const parsed = JSON.parse(item.batchWeightsJson);
           if (Array.isArray(parsed) && parsed.length > count) count = parsed.length;
         } catch(e){}
       }
-      if (rollId >= startRollId && rollId < startRollId + count) {
+      if (batchId >= startKratId && batchId < startKratId + count) {
         targetPurchaseItemId = item.id;
-        originalRollCountForTarget = count;
+        originalKratCountForTarget = count;
         break;
       }
     }
 
-    // Nullify rollId references in sale_items and purchase_items to avoid FK constraint
-    await db.update(saleItemsTable).set({ rollId: null }).where(eq(saleItemsTable.rollId, rollId));
+    // Nullify batchId references in sale_items and purchase_items to avoid FK constraint
+    await db.update(saleItemsTable).set({ batchId: null }).where(eq(saleItemsTable.batchId, batchId));
     // Soft nullify in purchaseItems by doing nothing, wait, if we nullify it, we can't find the range again.
-    // Actually, purchaseItemsTable.rollId CAN be nullified because we already stored targetPurchaseItemId.
-    await db.update(purchaseItemsTable).set({ rollId: null }).where(eq(purchaseItemsTable.rollId, rollId));
+    // Actually, purchaseItemsTable.batchId CAN be nullified because we already stored targetPurchaseItemId.
+    await db.update(purchaseItemsTable).set({ batchId: null }).where(eq(purchaseItemsTable.batchId, batchId));
 
-    await db.delete(productRollsTable).where(and(eq(productRollsTable.id, rollId), eq(productRollsTable.productId, id)));
+    await db.delete(productBatchesTable).where(and(eq(productBatchesTable.id, batchId), eq(productBatchesTable.productId, id)));
 
-    await syncProductStockFromRolls(id);
+    await syncProductStockFromKrats(id);
     
     if (targetPurchaseItemId) {
-      // Re-fetch the item because its rollId might have been nullified
+      // Re-fetch the item because its batchId might have been nullified
       const [tItem] = await db.select().from(purchaseItemsTable).where(eq(purchaseItemsTable.id, targetPurchaseItemId));
       if (tItem) {
-        // If its rollId was just nullified, we use the deleted rollId as the start
-        const startRollId = (tItem.rollId as number) || rollId;
-        const rollIds = Array.from({ length: originalRollCountForTarget }, (_, i) => startRollId + i);
-        const existingRolls = await db.select().from(productRollsTable).where(inArray(productRollsTable.id, rollIds));
-        const rollLengths: number[] = [];
-        for (const rid of rollIds) {
-          const r = existingRolls.find(x => x.id === rid);
-          if (r) rollLengths.push(parseFloat(r.currentLength));
+        // If its batchId was just nullified, we use the deleted batchId as the start
+        const startKratId = (tItem.batchId as number) || batchId;
+        const batchIds = Array.from({ length: originalKratCountForTarget }, (_, i) => startKratId + i);
+        const existingKrats = await db.select().from(productBatchesTable).where(inArray(productBatchesTable.id, batchIds));
+        const batchWeights: number[] = [];
+        for (const rid of batchIds) {
+          const r = existingKrats.find(x => x.id === rid);
+          if (r) batchWeights.push(parseFloat(r.currentWeight));
         }
-        const newMeters = rollLengths.reduce((a,b) => a + b, 0);
-        const newRolls = rollLengths.length;
-        const pricePerMeter = parseFloat(tItem.pricePerMeter || "0");
-        const newSubtotal = Math.round(newMeters * pricePerMeter);
+        const newKgs = batchWeights.reduce((a,b) => a + b, 0);
+        const newKrats = batchWeights.length;
+        const pricePerKg = parseFloat(tItem.pricePerKg || "0");
+        const newSubtotal = Math.round(newKgs * pricePerKg);
         await db.update(purchaseItemsTable).set({
-          rollLengthsJson: JSON.stringify(rollLengths),
-          meters: String(newMeters),
-          rolls: String(newRolls),
+          batchWeightsJson: JSON.stringify(batchWeights),
+          kgs: String(newKgs),
+          krats: String(newKrats),
           subtotal: String(newSubtotal)
         } as any).where(eq(purchaseItemsTable.id, tItem.id));
         await syncPurchaseTotals(tItem.purchaseId, true);
@@ -738,8 +738,8 @@ router.delete("/products/:id/rolls/:rollId", async (req, res): Promise<void> => 
 
     res.status(204).send();
   } catch (err: any) {
-    console.error("Error deleting roll:", err);
-    res.status(500).json({ error: err.message || "Gagal menghapus roll" });
+    console.error("Error deleting krat:", err);
+    res.status(500).json({ error: err.message || "Gagal menghapus krat" });
   }
 });
 

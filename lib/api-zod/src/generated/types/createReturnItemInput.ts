@@ -8,9 +8,9 @@
 
 export interface CreateReturnItemInput {
   productId: number;
-  rollId?: number | null;
-  rolls: number;
-  meters: number;
-  pricePerMeter: number;
+  batchId?: number | null;
+  krats: number;
+  kgs: number;
+  pricePerKg: number;
   subtotal: number;
 }

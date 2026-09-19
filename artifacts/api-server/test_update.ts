@@ -11,10 +11,10 @@ async function test() {
         const prodData: any = {
           name: p.name, barcode: p.barcode, categoryId: p.categoryId,
           primaryUnit: p.primaryUnit, secondaryUnit: p.secondaryUnit,
-          costPricePerMeter: String(p.costPricePerMeter), pricePerMeter: String(p.pricePerMeter),
-          costPricePerRoll: String(p.costPricePerRoll), pricePerRoll: String(p.pricePerRoll),
+          costPricePerKg: String(p.costPricePerKg), pricePerKg: String(p.pricePerKg),
+          costPricePerKrat: String(p.costPricePerKrat), pricePerKrat: String(p.pricePerKrat),
           minStock: String(p.minStock), description: p.description,
-          rollStock: "0", meterStock: "0",
+          kratStock: "0", kgStock: "0",
         };
         await db.update(productsTable).set({ ...prodData, updatedAt: new Date() }).where(eq(productsTable.id, p.id));
         success++;

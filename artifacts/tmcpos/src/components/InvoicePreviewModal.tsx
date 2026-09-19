@@ -10,7 +10,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import * as htmlToImage from "html-to-image";
 import { Printer, Loader2, QrCode, Download, RefreshCcw, CornerDownRight, ShieldCheck, Clock, Bell } from "lucide-react";
 import React from "react";
-import { useGetSale, getGetSaleQueryKey, useListProducts, getListProductsQueryKey, useGetProductRolls, getGetProductRollsQueryKey, useListCategories, getListCategoriesQueryKey, useCreateReturn, getListSalesQueryKey } from "@workspace/api-client-react";
+import { useGetSale, getGetSaleQueryKey, useListProducts, getListProductsQueryKey, useGetProductBatchs, getGetProductBatchsQueryKey, useListCategories, getListCategoriesQueryKey, useCreateReturn, getListSalesQueryKey } from "@workspace/api-client-react";
 import { OtpDialog } from "./OtpDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -21,14 +21,14 @@ export type InvoicePreviewData = {
   createdAt?: string;
   items: Array<{
     productId: number;
-    rollId?: number;
+    batchId?: number;
     categoryName?: string;
     productName: string;
     primaryUnit?: string;
     secondaryUnit?: string;
-    meters: number | string;
-    rolls: number | string;
-    pricePerMeter: number | string;
+    kgs: number | string;
+    krats: number | string;
+    pricePerKg: number | string;
     subtotal: number | string;
     isReturned?: boolean;
   }>;
@@ -37,9 +37,9 @@ export type InvoicePreviewData = {
     productName: string;
     primaryUnit?: string;
     secondaryUnit?: string;
-    meters: number | string;
-    rolls: number | string;
-    pricePerMeter: number | string;
+    kgs: number | string;
+    krats: number | string;
+    pricePerKg: number | string;
     subtotal: number | string;
   }>;
   totalAmount: number | string;
@@ -78,16 +78,16 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
   const [pendingExchangeItem, setPendingExchangeItem] = useState<any>(null);
 
   const [replacementProductId, setReplacementProductId] = useState<string>("");
-  const [replacementRollId, setReplacementRollId] = useState<string>("none");
-  const [replacementMeters, setReplacementMeters] = useState<number | "">("");
-  const [replacementRolls, setReplacementRolls] = useState<number | "">(1);
+  const [replacementKratId, setReplacementKratId] = useState<string>("none");
+  const [replacementKgs, setReplacementKgs] = useState<number | "">("");
+  const [replacementKrats, setReplacementKrats] = useState<number | "">(1);
   const [replacementPrice, setReplacementPrice] = useState<number | "">("");
   const [exchangePaymentStatus, setExchangePaymentStatus] = useState<"lunas" | "tempo" | "">("");
   
   const { data: products } = useListProducts({}, { query: { queryKey: getListProductsQueryKey(), enabled: exchangeOpen } });
   const { data: categories } = useListCategories({ query: { queryKey: getListCategoriesQueryKey(), enabled: exchangeOpen } });
-  const { data: rolls } = useGetProductRolls(parseInt(replacementProductId) || 0, {
-    query: { queryKey: getGetProductRollsQueryKey(parseInt(replacementProductId) || 0), enabled: !!replacementProductId && replacementProductId !== "none" && exchangeOpen }
+  const { data: krats } = useGetProductBatchs(parseInt(replacementProductId) || 0, {
+    query: { queryKey: getGetProductBatchsQueryKey(parseInt(replacementProductId) || 0), enabled: !!replacementProductId && replacementProductId !== "none" && exchangeOpen }
   });
 
   const [replacementCategoryId, setReplacementCategoryId] = useState<string>("all");
@@ -233,7 +233,7 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
     }
     
     const returnedSubtotal = parseFloat(itemToExchange.subtotal as string || "0");
-    const exchangeSubtotal = (typeof replacementMeters === "number" ? replacementMeters : 0) * (typeof replacementPrice === "number" ? replacementPrice : 0);
+    const exchangeSubtotal = (typeof replacementKgs === "number" ? replacementKgs : 0) * (typeof replacementPrice === "number" ? replacementPrice : 0);
     
     const defaultPaymentStatus = displayData?.remainingAmount && parseFloat(displayData.remainingAmount as string) > 0 ? "tempo" : "lunas";
     const paymentStatus = exchangePaymentStatus || defaultPaymentStatus;
@@ -248,18 +248,18 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
         notes: "Tukar barang dari POS",
         returnedItems: [{
           productId: itemToExchange.productId,
-          rollId: itemToExchange.rollId || undefined,
-          rolls: parseFloat(itemToExchange.rolls as string || "0"),
-          meters: parseFloat(itemToExchange.meters as string || "0"),
-          pricePerMeter: parseFloat(itemToExchange.pricePerMeter as string || "0"),
+          batchId: itemToExchange.batchId || undefined,
+          krats: parseFloat(itemToExchange.krats as string || "0"),
+          kgs: parseFloat(itemToExchange.kgs as string || "0"),
+          pricePerKg: parseFloat(itemToExchange.pricePerKg as string || "0"),
           subtotal: returnedSubtotal
         }],
         exchangedItems: [{
           productId: parseInt(replacementProductId),
-          rollId: replacementRollId !== "none" ? parseInt(replacementRollId.replace("r_", "")) : undefined,
-          rolls: typeof replacementRolls === "number" ? replacementRolls : 0,
-          meters: typeof replacementMeters === "number" ? replacementMeters : 0,
-          pricePerMeter: typeof replacementPrice === "number" ? replacementPrice : 0,
+          batchId: replacementKratId !== "none" ? parseInt(replacementKratId.replace("r_", "")) : undefined,
+          krats: typeof replacementKrats === "number" ? replacementKrats : 0,
+          kgs: typeof replacementKgs === "number" ? replacementKgs : 0,
+          pricePerKg: typeof replacementPrice === "number" ? replacementPrice : 0,
           subtotal: exchangeSubtotal
         }]
       }
@@ -271,9 +271,9 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
     if (pendingExchangeItem) {
       setItemToExchange(pendingExchangeItem);
       setReplacementProductId("");
-      setReplacementRollId("none");
-      setReplacementMeters("");
-      setReplacementRolls(1);
+      setReplacementKratId("none");
+      setReplacementKgs("");
+      setReplacementKrats(1);
       setReplacementPrice("");
       setExchangeOpen(true);
       setPendingExchangeItem(null);
@@ -288,12 +288,12 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
   const activeItems = displayData?.items?.filter((i: any) => !i.isReturned) || [];
   const exchangedItemsArr = (displayData as any)?.exchangedItems || [];
   const allActiveItems = [...activeItems, ...exchangedItemsArr];
-  const totalYds = allActiveItems.reduce((sum: number, item: any) => sum + parseFloat(item.meters as string || "0"), 0) || 0;
-  const totalRolls = allActiveItems.reduce((sum: number, item: any) => sum + parseFloat(item.rolls as string || "0"), 0) || 0;
+  const totalYds = allActiveItems.reduce((sum: number, item: any) => sum + parseFloat(item.kgs as string || "0"), 0) || 0;
+  const totalKrats = allActiveItems.reduce((sum: number, item: any) => sum + parseFloat(item.krats as string || "0"), 0) || 0;
   
   const isPaid = parseFloat(displayData?.remainingAmount as string || "0") <= 0 && parseFloat(displayData?.totalAmount as string || "0") > 0 && displayData?.status !== "draft" && displayData?.status !== "held";
   const isDraft = displayData?.status === "draft" || displayData?.status === "held" || !displayData?.invoiceNumber;
-  const availableRolls = rolls?.filter(r => r.status === 'available') || [];
+  const availableKrats = krats?.filter(r => r.status === 'available') || [];
 
   const uniqueReturns = useMemo(() => {
     if (!displayData?.items) return [];
@@ -313,32 +313,32 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
     const groups: Record<string, any> = {};
     
     displayData.items.forEach((item: any) => {
-      const key = `${item.productId}_${parseFloat(item.pricePerMeter || item.pricePerUnit || "0")}`;
+      const key = `${item.productId}_${parseFloat(item.pricePerKg || item.pricePerUnit || "0")}`;
       if (!groups[key]) {
         groups[key] = {
           ...item,
           isGroup: true,
-          groupedRolls: [{
-             meters: parseFloat(item.meters as string || "0"),
-             rolls: parseFloat(item.rolls as string || "0"),
+          groupedKrats: [{
+             kgs: parseFloat(item.kgs as string || "0"),
+             krats: parseFloat(item.krats as string || "0"),
              isReturned: item.isReturned,
              originalItem: item
           }],
-          totalMeters: parseFloat(item.meters as string || "0"),
-          totalRolls: parseFloat(item.rolls as string || "0"),
+          totalKgs: parseFloat(item.kgs as string || "0"),
+          totalKrats: parseFloat(item.krats as string || "0"),
           totalSubtotal: parseFloat(item.subtotal as string || "0"),
           hasReturned: item.isReturned,
           allReturns: [...(item.returns || [])]
         };
       } else {
-        groups[key].groupedRolls.push({
-           meters: parseFloat(item.meters as string || "0"),
-           rolls: parseFloat(item.rolls as string || "0"),
+        groups[key].groupedKrats.push({
+           kgs: parseFloat(item.kgs as string || "0"),
+           krats: parseFloat(item.krats as string || "0"),
            isReturned: item.isReturned,
            originalItem: item
         });
-        groups[key].totalMeters += parseFloat(item.meters as string || "0");
-        groups[key].totalRolls += parseFloat(item.rolls as string || "0");
+        groups[key].totalKgs += parseFloat(item.kgs as string || "0");
+        groups[key].totalKrats += parseFloat(item.krats as string || "0");
         groups[key].totalSubtotal += parseFloat(item.subtotal as string || "0");
         if (item.isReturned) groups[key].hasReturned = true;
         if (item.returns && item.returns.length > 0) {
@@ -467,9 +467,9 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
                               {item.categoryName ? <span className="text-xs text-indigo-400 font-medium mr-1">{item.categoryName} /</span> : ''}{productName}
                             </span>
                             <div className="flex flex-wrap gap-1 mt-0 text-xs leading-none text-slate-700 items-center">
-                              {item.groupedRolls.map((gr: any, gIdx: number) => (
+                              {item.groupedKrats.map((gr: any, gIdx: number) => (
                                  <span key={gIdx} className={`inline-flex items-center ${gr.isReturned ? 'italic text-slate-400' : ''}`}>
-                                   [{Number(Number(gr.meters).toFixed(2))}{gr.isReturned ? ' RETUR' : ''}]
+                                   [{Number(Number(gr.kgs).toFixed(2))}{gr.isReturned ? ' RETUR' : ''}]
                                    {!gr.isReturned && saleId && (
                                      <Button 
                                        variant="ghost" size="sm" className="h-4 w-4 ml-0.5 p-0 text-orange-400 hover:text-orange-600 no-print" 
@@ -485,11 +485,11 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
                           </div>
                         </td>
                         <td className="py-1 px-2 text-right whitespace-nowrap">
-                          <span className="font-semibold text-slate-800">{Number(Number(item.totalMeters).toFixed(2))} {(item as any).primaryUnit || 'M'}</span>
-                          <span className="text-slate-400 ml-1 text-xs">/ {item.totalRolls} {(item as any).secondaryUnit || 'Roll'}</span>
+                          <span className="font-semibold text-slate-800">{Number(Number(item.totalKgs).toFixed(2))} {(item as any).primaryUnit || 'M'}</span>
+                          <span className="text-slate-400 ml-1 text-xs">/ {item.totalKrats} {(item as any).secondaryUnit || 'Krat'}</span>
                         </td>
                         <td className="py-1 px-2 text-right font-semibold text-slate-600">
-                          {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(item.pricePerMeter as string || item.pricePerUnit as string || "0"))}
+                          {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(item.pricePerKg as string || item.pricePerUnit as string || "0"))}
                         </td>
                         <td className="py-1 px-2 text-right font-medium text-slate-900">
                           {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(item.totalSubtotal)}
@@ -526,11 +526,11 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
                                   </div>
                                 </td>
                                 <td className="py-1 px-3 text-right whitespace-nowrap">
-                                  <span className="font-semibold text-slate-700">{Number(parseFloat(exc.meters || "0").toFixed(2))} {(exc as any).primaryUnit || 'M'}</span>
-                                  <span className="text-slate-400 ml-1 text-xs">/ {exc.rolls} {(exc as any).secondaryUnit || 'Roll'}</span>
+                                  <span className="font-semibold text-slate-700">{Number(parseFloat(exc.kgs || "0").toFixed(2))} {(exc as any).primaryUnit || 'M'}</span>
+                                  <span className="text-slate-400 ml-1 text-xs">/ {exc.krats} {(exc as any).secondaryUnit || 'Krat'}</span>
                                 </td>
                                 <td className="py-1 px-3 text-right font-semibold text-slate-600">
-                                  {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(exc.pricePerMeter as string || "0"))}
+                                  {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(exc.pricePerKg as string || "0"))}
                                 </td>
                                 <td className="py-1 px-3 text-right font-medium text-slate-800">
                                   {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(exc.subtotal as string || "0"))}
@@ -605,7 +605,7 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
                       <tr className="bg-slate-50">
                         <td className="py-0 px-2 font-semibold text-slate-600 text-xs uppercase tracking-wider w-1/2">Total Kuantitas</td>
                         <td className="py-0 px-2 font-medium text-slate-800 text-left">
-                          {totalYds.toFixed(2)} {(displayData.items?.[0] as any)?.primaryUnit || 'M'} / {totalRolls} Roll
+                          {totalYds.toFixed(2)} {(displayData.items?.[0] as any)?.primaryUnit || 'M'} / {totalKrats} Krat
                         </td>
                       </tr>
                       
@@ -749,7 +749,7 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
               <span className="text-xs font-semibold text-orange-800 uppercase tracking-wider">Barang yang dikembalikan</span>
               <span className="font-bold text-sm">{itemToExchange?.productName}</span>
               <span className="text-xs text-orange-700">
-                {parseFloat(itemToExchange?.meters || 0)} {(itemToExchange as any)?.primaryUnit || 'M'} / {parseFloat(itemToExchange?.rolls || 0)} {(itemToExchange as any)?.secondaryUnit || 'Roll'} (Rp {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(itemToExchange?.pricePerMeter || itemToExchange?.pricePerUnit || 0))})
+                {parseFloat(itemToExchange?.kgs || 0)} {(itemToExchange as any)?.primaryUnit || 'M'} / {parseFloat(itemToExchange?.krats || 0)} {(itemToExchange as any)?.secondaryUnit || 'Krat'} (Rp {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(parseFloat(itemToExchange?.pricePerKg || itemToExchange?.pricePerUnit || 0))})
               </span>
             </div>
 
@@ -759,7 +759,7 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
                 <Select value={replacementCategoryId} onValueChange={(val: string) => {
                   setReplacementCategoryId(val);
                   setReplacementProductId("");
-                  setReplacementRollId("none");
+                  setReplacementKratId("none");
                 }}>
                   <SelectTrigger><SelectValue placeholder="Semua Kategori" /></SelectTrigger>
                   <SelectContent className="z-[400]">
@@ -779,9 +779,9 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
                 <label className="text-sm font-medium">Barang Pengganti</label>
                 <Select value={replacementProductId} onValueChange={(val: string) => {
                   setReplacementProductId(val);
-                  setReplacementRollId("none");
+                  setReplacementKratId("none");
                   const prod = products?.find(p => p.id === parseInt(val));
-                  if (prod) setReplacementPrice(parseFloat(String(prod.pricePerMeter)));
+                  if (prod) setReplacementPrice(parseFloat(String(prod.pricePerKg)));
                 }}>
                   <SelectTrigger><SelectValue placeholder="Pilih barang..." /></SelectTrigger>
                   <SelectContent className="z-[400]">
@@ -798,26 +798,26 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Pilih Roll (Opsional)</label>
-              <Select value={replacementRollId} onValueChange={(val: string) => {
-                setReplacementRollId(val);
+              <label className="text-sm font-medium">Pilih Krat (Opsional)</label>
+              <Select value={replacementKratId} onValueChange={(val: string) => {
+                setReplacementKratId(val);
                 if (val !== "none") {
-                  const roll = availableRolls.find(r => r.id === parseInt(val.replace("r_", "")));
-                  if (roll) {
-                    setReplacementMeters(parseFloat(String(roll.currentLength)));
-                    setReplacementRolls(1);
+                  const krat = availableKrats.find(r => r.id === parseInt(val.replace("r_", "")));
+                  if (krat) {
+                    setReplacementKgs(parseFloat(String(krat.currentWeight)));
+                    setReplacementKrats(1);
                   }
                 }
-              }} disabled={!replacementProductId || availableRolls.length === 0}>
-                <SelectTrigger><SelectValue placeholder="Bebas Meteran" /></SelectTrigger>
+              }} disabled={!replacementProductId || availableKrats.length === 0}>
+                <SelectTrigger><SelectValue placeholder="Bebas Kgan" /></SelectTrigger>
                 <SelectContent className="z-[400]">
-                  <SelectItem value="none" className="border shadow-sm hover:border-primary/50 mb-2 w-full text-base justify-center">Bebas Meteran</SelectItem>
-                  {availableRolls.length > 0 && (
+                  <SelectItem value="none" className="border shadow-sm hover:border-primary/50 mb-2 w-full text-base justify-center">Bebas Kgan</SelectItem>
+                  {availableKrats.length > 0 && (
                     <SelectGroup className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 p-2">
-                      {availableRolls.map(r => (
+                      {availableKrats.map(r => (
                         <SelectItem key={`r_${r.id}`} value={`r_${r.id}`} className="border shadow-sm hover:border-primary/50 py-3 h-auto justify-center text-center">
                           <div className="flex flex-col items-center gap-1 w-full min-w-0">
-                            <span className="font-semibold text-base">{r.currentLength}m</span>
+                            <span className="font-semibold text-base">{r.currentWeight}m</span>
                             <span className="text-[10px] text-muted-foreground whitespace-normal break-all text-center leading-tight">
                               {r.barcode}
                             </span>
@@ -832,24 +832,24 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Jml Meter</label>
-                <Input type="number" step="any" value={replacementMeters} onChange={e => setReplacementMeters(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={!!replacementRollId && replacementRollId !== "none"} />
+                <label className="text-sm font-medium">Jml Kg</label>
+                <Input type="number" step="any" value={replacementKgs} onChange={e => setReplacementKgs(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={!!replacementKratId && replacementKratId !== "none"} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Jml Roll</label>
-                <Input type="number" step="any" value={replacementRolls} onChange={e => setReplacementRolls(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={!!replacementRollId && replacementRollId !== "none"} />
+                <label className="text-sm font-medium">Jml Krat</label>
+                <Input type="number" step="any" value={replacementKrats} onChange={e => setReplacementKrats(e.target.value === "" ? "" : parseFloat(e.target.value))} disabled={!!replacementKratId && replacementKratId !== "none"} />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Harga/Meter Pengganti</label>
+              <label className="text-sm font-medium">Harga/Kg Pengganti</label>
               <Input type="number" step="any" value={replacementPrice} onChange={e => setReplacementPrice(e.target.value === "" ? "" : parseFloat(e.target.value))} />
             </div>
 
             {/* Payment Status Selector if there is an underpayment */}
             {(() => {
               const retSubtotal = parseFloat(itemToExchange?.subtotal as string || "0");
-              const exSubtotal = (typeof replacementMeters === "number" ? replacementMeters : 0) * (typeof replacementPrice === "number" ? replacementPrice : 0);
+              const exSubtotal = (typeof replacementKgs === "number" ? replacementKgs : 0) * (typeof replacementPrice === "number" ? replacementPrice : 0);
               const diff = exSubtotal - retSubtotal;
               
               if (diff > 0) {
@@ -876,7 +876,7 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
           </div>
           <DialogFooter className="mt-4 px-6 pb-6">
             <Button variant="outline" onClick={() => setExchangeOpen(false)}>Batal</Button>
-            <Button onClick={handleExchangeSubmit} disabled={createReturnMutation.isPending || !replacementProductId || !replacementMeters}>
+            <Button onClick={handleExchangeSubmit} disabled={createReturnMutation.isPending || !replacementProductId || !replacementKgs}>
               {createReturnMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Simpan Retur
             </Button>

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { purchasesTable, purchaseItemsTable, suppliersTable, productsTable, categoriesTable, payablesTable, paymentsTable, stockMutationsTable, productRollsTable, saleItemsTable } from "@workspace/db";
+import { purchasesTable, purchaseItemsTable, suppliersTable, productsTable, categoriesTable, payablesTable, paymentsTable, stockMutationsTable, productBatchesTable, saleItemsTable } from "@workspace/db";
 import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
 import { CreatePurchaseBody } from "@workspace/api-zod";
 import { broadcastRefresh } from "../lib/websocket";
@@ -50,11 +50,11 @@ router.get("/purchases/export", async (req, res): Promise<void> => {
           productName: productsTable.name,
           categoryName: categoriesTable.name,
           barcode: productsTable.barcode,
-          rolls: purchaseItemsTable.rolls,
-          meters: purchaseItemsTable.meters,
-          pricePerMeter: purchaseItemsTable.pricePerMeter,
+          krats: purchaseItemsTable.krats,
+          kgs: purchaseItemsTable.kgs,
+          pricePerKg: purchaseItemsTable.pricePerKg,
           subtotal: purchaseItemsTable.subtotal,
-          rollLengthsJson: purchaseItemsTable.rollLengthsJson,
+          batchWeightsJson: purchaseItemsTable.batchWeightsJson,
         })
         .from(purchaseItemsTable)
         .leftJoin(productsTable, eq(purchaseItemsTable.productId, productsTable.id))
@@ -68,12 +68,12 @@ router.get("/purchases/export", async (req, res): Promise<void> => {
       itemsByPurchaseId.get(item.purchaseId)!.push(item);
     }
 
-    // Calculate max rolls for dynamic columns
-    let maxRolls = 0;
+    // Calculate max krats for dynamic columns
+    let maxKrats = 0;
     for (const item of itemsData) {
-      if (item.rollLengthsJson) {
-        const rolls = JSON.parse(item.rollLengthsJson) as number[];
-        if (rolls.length > maxRolls) maxRolls = rolls.length;
+      if (item.batchWeightsJson) {
+        const krats = JSON.parse(item.batchWeightsJson) as number[];
+        if (krats.length > maxKrats) maxKrats = krats.length;
       }
     }
 
@@ -93,10 +93,10 @@ router.get("/purchases/export", async (req, res): Promise<void> => {
         const row: any = {
           "No": rowNo++, "Tanggal": tanggal,
           "Barcode": "", "Kategori": "", "Produk / Barang": "",
-          "Roll": 0, "Meter/Yard": 0
+          "Krat": 0, "Kg/Yard": 0
         };
-        for (let i = 1; i <= maxRolls; i++) row[`Roll ${i}`] = "";
-        row["Harga / Meter"] = 0;
+        for (let i = 1; i <= maxKrats; i++) row[`Krat ${i}`] = "";
+        row["Harga / Kg"] = 0;
         row["Subtotal"] = 0;
         row["Total Nota"] = totalAmt;
         row["Sudah Dibayar"] = paidAmt;
@@ -115,19 +115,19 @@ router.get("/purchases/export", async (req, res): Promise<void> => {
             "Barcode": item.barcode || "",
             "Kategori": item.categoryName || "",
             "Produk / Barang": item.productName || "",
-            "Roll": parseFloat(item.rolls) || 0,
-            "Meter/Yard": parseFloat(item.meters) || 0,
+            "Krat": parseFloat(item.krats) || 0,
+            "Kg/Yard": parseFloat(item.kgs) || 0,
           };
           
-          let rollLengths: number[] = [];
-          if (item.rollLengthsJson) {
-            rollLengths = JSON.parse(item.rollLengthsJson) as number[];
+          let batchWeights: number[] = [];
+          if (item.batchWeightsJson) {
+            batchWeights = JSON.parse(item.batchWeightsJson) as number[];
           }
-          for (let i = 1; i <= maxRolls; i++) {
-            row[`Roll ${i}`] = rollLengths[i - 1] !== undefined ? rollLengths[i - 1] : "";
+          for (let i = 1; i <= maxKrats; i++) {
+            row[`Krat ${i}`] = batchWeights[i - 1] !== undefined ? batchWeights[i - 1] : "";
           }
 
-          row["Harga / Meter"] = parseFloat(item.pricePerMeter) || 0;
+          row["Harga / Kg"] = parseFloat(item.pricePerKg) || 0;
           row["Subtotal"] = parseFloat(item.subtotal) || 0;
           row["Total Nota"] = idx === 0 ? totalAmt : "";
           row["Sudah Dibayar"] = idx === 0 ? paidAmt : "";
@@ -306,28 +306,28 @@ router.post("/purchases/import", async (req, res): Promise<void> => {
           ));
 
         // Parse items
-        const items: { productId: number; rolls: number; meters: number; pricePerMeter: number; subtotal: number; rollLengths: number[] }[] = [];
+        const items: { productId: number; krats: number; kgs: number; pricePerKg: number; subtotal: number; batchWeights: number[] }[] = [];
         const itemErrors: string[] = [];
         for (const row of rows) {
           const prodName = String(row["Produk / Barang"] || "").trim();
           if (!prodName) continue;
           const prod = findProduct(prodName);
           if (!prod) { itemErrors.push(`Produk "${prodName}" tidak ditemukan`); continue; }
-          const rollsCount = parseFloat(String(row["Roll"]).replace(",", ".")) || 0;
-          const meters = parseFloat(String(row["Meter/Yard"]).replace(",", ".")) || 0;
-          const pricePerMeter = parseFloat(String(row["Harga / Meter"]).replace(",", ".")) || 0;
-          const subtotal = parseFloat(String(row["Subtotal"]).replace(",", ".")) || Math.round(meters * pricePerMeter);
-          const rollLengths: number[] = [];
+          const kratsCount = parseFloat(String(row["Krat"]).replace(",", ".")) || 0;
+          const kgs = parseFloat(String(row["Kg/Yard"]).replace(",", ".")) || 0;
+          const pricePerKg = parseFloat(String(row["Harga / Kg"]).replace(",", ".")) || 0;
+          const subtotal = parseFloat(String(row["Subtotal"]).replace(",", ".")) || Math.round(kgs * pricePerKg);
+          const batchWeights: number[] = [];
           for (const key of Object.keys(row)) {
-            if (key.startsWith("Roll ") && key !== "Roll") {
+            if (key.startsWith("Krat ") && key !== "Krat") {
               const val = parseFloat(String(row[key]).replace(",", "."));
               if (!isNaN(val) && val > 0) {
-                const rollIndex = parseInt(key.replace("Roll ", "").trim(), 10);
-                if (!isNaN(rollIndex) && rollIndex > 0) rollLengths[rollIndex - 1] = val;
+                const kratIndex = parseInt(key.replace("Krat ", "").trim(), 10);
+                if (!isNaN(kratIndex) && kratIndex > 0) batchWeights[kratIndex - 1] = val;
               }
             }
           }
-          items.push({ productId: prod.id, rolls: rollsCount, meters, pricePerMeter, subtotal, rollLengths: rollLengths.filter(r => r !== undefined) });
+          items.push({ productId: prod.id, krats: kratsCount, kgs, pricePerKg, subtotal, batchWeights: batchWeights.filter(r => r !== undefined) });
         }
         if (itemErrors.length > 0) { results.push({ invoice: invoiceNumber, status: "error", message: itemErrors.join("; ") }); continue; }
         if (items.length === 0) { results.push({ invoice: invoiceNumber, status: "skip", message: "Tidak ada item barang valid" }); continue; }
@@ -354,44 +354,44 @@ router.post("/purchases/import", async (req, res): Promise<void> => {
           purchaseId = newPurchase.id;
         }
 
-        // ── Insert items + rolls (same for both insert and upsert) ──
+        // ── Insert items + krats (same for both insert and upsert) ──
         for (const item of items) {
-          const avgLength = item.rolls > 0 ? item.meters / item.rolls : 0;
+          const avgLength = item.krats > 0 ? item.kgs / item.krats : 0;
           const [prod] = await db.select().from(productsTable).where(eq(productsTable.id, item.productId));
           const baseBarcode = prod?.barcode || `PRD-${item.productId}`;
-          let insertedRollId: number | null = null;
+          let insertedKratId: number | null = null;
           
-          const rollLengthsToUse = item.rollLengths || [];
+          const batchWeightsToUse = item.batchWeights || [];
           const ts = Date.now();
 
-          for (let i = 0; i < item.rolls; i++) {
+          for (let i = 0; i < item.krats; i++) {
             const barcodeToSave = `${baseBarcode}-R${ts}-${i}-${Math.floor(Math.random() * 9999)}`;
-            const lengthToUse = rollLengthsToUse[i] !== undefined ? rollLengthsToUse[i] : avgLength;
-            const [roll] = await db.insert(productRollsTable).values({
+            const lengthToUse = batchWeightsToUse[i] !== undefined ? batchWeightsToUse[i] : avgLength;
+            const [krat] = await db.insert(productBatchesTable).values({
               productId: item.productId, barcode: barcodeToSave,
-              originalLength: lengthToUse.toString(), currentLength: lengthToUse.toString(), status: "available",
+              originalWeight: lengthToUse.toString(), currentWeight: lengthToUse.toString(), status: "available",
             }).returning();
-            if (i === 0) insertedRollId = roll.id;
+            if (i === 0) insertedKratId = krat.id;
           }
 
           await db.insert(purchaseItemsTable).values({
             purchaseId: purchaseId, productId: item.productId,
-            rollId: insertedRollId, rolls: item.rolls.toString(),
-            meters: item.meters.toString(), pricePerMeter: item.pricePerMeter.toString(),
+            batchId: insertedKratId, krats: item.krats.toString(),
+            kgs: item.kgs.toString(), pricePerKg: item.pricePerKg.toString(),
             subtotal: item.subtotal.toString(),
-            rollLengthsJson: item.rollLengths && item.rollLengths.length > 0 ? JSON.stringify(item.rollLengths) : null,
+            batchWeightsJson: item.batchWeights && item.batchWeights.length > 0 ? JSON.stringify(item.batchWeights) : null,
           } as any);
 
           // Sync stock
-          const rolls = await db.select().from(productRollsTable)
-            .where(and(eq(productRollsTable.productId, item.productId), eq(productRollsTable.status, "available")));
-          const newRollStock = rolls.length;
-          const newMeterStock = rolls.reduce((s, r) => s + parseFloat(r.currentLength), 0);
-          await db.execute(sql`UPDATE ${productsTable} SET roll_stock=${newRollStock}, meter_stock=${newMeterStock}, updated_at=NOW() WHERE id=${item.productId}`);
+          const krats = await db.select().from(productBatchesTable)
+            .where(and(eq(productBatchesTable.productId, item.productId), eq(productBatchesTable.status, "available")));
+          const newKratStock = krats.length;
+          const newKgStock = krats.reduce((s, r) => s + parseFloat(r.currentWeight), 0);
+          await db.execute(sql`UPDATE ${productsTable} SET krat_stock=${newKratStock}, kg_stock=${newKgStock}, updated_at=NOW() WHERE id=${item.productId}`);
 
           await db.insert(stockMutationsTable).values({
             productId: item.productId, type: "masuk",
-            rolls: item.rolls.toString(), meters: item.meters.toString(),
+            krats: item.krats.toString(), kgs: item.kgs.toString(),
             description: `Import Pembelian ${invoiceNumber}`, reference: invoiceNumber,
           });
         }
@@ -496,66 +496,66 @@ router.post("/purchases", async (req, res): Promise<void> => {
   }).returning();
 
   for (const item of items) {
-    const rollCount = Number(item.rolls) || 0;
-    const totalMeters = Number(item.meters) || 0;
+    const kratCount = Number(item.krats) || 0;
+    const totalKgs = Number(item.kgs) || 0;
     
-    // Auto-generate rolls if roll count > 0
-    let insertedRollId: number | null = null;
+    // Auto-generate krats if krat count > 0
+    let insertedKratId: number | null = null;
     
-    if (rollCount > 0) {
-      const avgLength = totalMeters / rollCount;
+    if (kratCount > 0) {
+      const avgLength = totalKgs / kratCount;
       const [prod] = await db.select().from(productsTable).where(eq(productsTable.id, item.productId));
       const baseBarcode = prod?.barcode || `PRD-${item.productId}`;
       
-      for (let i = 0; i < rollCount; i++) {
-        // Auto-generate barcode unik untuk setiap roll (hindari constraint violation)
+      for (let i = 0; i < kratCount; i++) {
+        // Auto-generate barcode unik untuk setiap krat (hindari constraint violation)
         const barcodeToSave = `${baseBarcode}-R${Date.now()}-${i}-${Math.floor(Math.random() * 9999)}`;
         
-        // @ts-ignore - rollLengths exists on our updated schema
-        const lengthToUse = (item.rollLengths && item.rollLengths[i]) ? item.rollLengths[i] : avgLength;
+        // @ts-ignore - batchWeights exists on our updated schema
+        const lengthToUse = (item.batchWeights && item.batchWeights[i]) ? item.batchWeights[i] : avgLength;
         
-        const [roll] = await db.insert(productRollsTable).values({
+        const [krat] = await db.insert(productBatchesTable).values({
           productId: item.productId,
           barcode: barcodeToSave,
-          originalLength: lengthToUse.toString(),
-          currentLength: lengthToUse.toString(),
+          originalWeight: lengthToUse.toString(),
+          currentWeight: lengthToUse.toString(),
           status: "available",
         }).returning();
         
-        if (i === 0) insertedRollId = roll.id;
+        if (i === 0) insertedKratId = krat.id;
       }
     }
 
     await db.insert(purchaseItemsTable).values({
       purchaseId: purchase.id,
       productId: item.productId,
-      rollId: insertedRollId,
-      rolls: item.rolls.toString(),
-      meters: item.meters.toString(),
-      pricePerMeter: item.pricePerMeter.toString(),
+      batchId: insertedKratId,
+      krats: item.krats.toString(),
+      kgs: item.kgs.toString(),
+      pricePerKg: item.pricePerKg.toString(),
       subtotal: item.subtotal.toString(),
-      // Simpan panjang tiap roll sebagai JSON agar bisa dipulihkan saat restore
-      rollLengthsJson: (item.rollLengths && item.rollLengths.length > 0)
-        ? JSON.stringify(item.rollLengths.map((l: any) => parseFloat(String(l).replace(',', '.')) || 0))
+      // Simpan panjang tiap krat sebagai JSON agar bisa dipulihkan saat restore
+      batchWeightsJson: (item.batchWeights && item.batchWeights.length > 0)
+        ? JSON.stringify(item.batchWeights.map((l: any) => parseFloat(String(l).replace(',', '.')) || 0))
         : null,
     } as any);
     
-    // Sync the product's meter_stock and roll_stock based on the productRollsTable
-    const rolls = await db.select().from(productRollsTable).where(and(eq(productRollsTable.productId, item.productId), eq(productRollsTable.status, "available")));
-    const calculatedRollStock = rolls.length;
-    const calculatedMeterStock = rolls.reduce((sum, r) => sum + parseFloat(r.currentLength), 0);
+    // Sync the product's kg_stock and krat_stock based on the productBatchesTable
+    const krats = await db.select().from(productBatchesTable).where(and(eq(productBatchesTable.productId, item.productId), eq(productBatchesTable.status, "available")));
+    const calculatedKratStock = krats.length;
+    const calculatedKgStock = krats.reduce((sum, r) => sum + parseFloat(r.currentWeight), 0);
 
     await db.execute(sql`
       UPDATE ${productsTable} 
-      SET roll_stock = ${calculatedRollStock}, meter_stock = ${calculatedMeterStock}, updated_at = NOW()
+      SET krat_stock = ${calculatedKratStock}, kg_stock = ${calculatedKgStock}, updated_at = NOW()
       WHERE id = ${item.productId}
     `);
     
     await db.insert(stockMutationsTable).values({
       productId: item.productId,
       type: "masuk",
-      rolls: item.rolls.toString(),
-      meters: item.meters.toString(),
+      krats: item.krats.toString(),
+      kgs: item.kgs.toString(),
       description: `Pembelian ${invoiceNumber}`,
       reference: invoiceNumber,
     });
@@ -613,11 +613,11 @@ router.get("/purchases/by-invoice", async (req, res): Promise<void> => {
       productId: purchaseItemsTable.productId,
       productName: productsTable.name,
       categoryId: productsTable.categoryId,
-      rollId: purchaseItemsTable.rollId,
-      rollLengthsJson: purchaseItemsTable.rollLengthsJson,
-      rolls: purchaseItemsTable.rolls,
-      meters: purchaseItemsTable.meters,
-      pricePerMeter: purchaseItemsTable.pricePerMeter,
+      batchId: purchaseItemsTable.batchId,
+      batchWeightsJson: purchaseItemsTable.batchWeightsJson,
+      krats: purchaseItemsTable.krats,
+      kgs: purchaseItemsTable.kgs,
+      pricePerKg: purchaseItemsTable.pricePerKg,
       subtotal: purchaseItemsTable.subtotal,
       primaryUnit: productsTable.primaryUnit,
       secondaryUnit: productsTable.secondaryUnit,
@@ -627,40 +627,40 @@ router.get("/purchases/by-invoice", async (req, res): Promise<void> => {
     .leftJoin(productsTable, eq(purchaseItemsTable.productId, productsTable.id))
     .where(eq(purchaseItemsTable.purchaseId, purchase.id));
 
-  const itemsWithRolls = await Promise.all(items.map(async (i) => {
-    const rollCount = Number(i.rolls) || 0;
-    let rollLengths: number[] = [];
+  const itemsWithKrats = await Promise.all(items.map(async (i) => {
+    const kratCount = Number(i.krats) || 0;
+    let batchWeights: number[] = [];
 
-    if (rollCount > 0) {
-      // Priority 1: gunakan rollLengthsJson yang tersimpan saat pembelian dibuat
-      if (i.rollLengthsJson) {
+    if (kratCount > 0) {
+      // Priority 1: gunakan batchWeightsJson yang tersimpan saat pembelian dibuat
+      if (i.batchWeightsJson) {
         try {
-          const parsed = JSON.parse(i.rollLengthsJson);
+          const parsed = JSON.parse(i.batchWeightsJson);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            rollLengths = parsed.map(Number);
+            batchWeights = parsed.map(Number);
           }
         } catch {}
       }
 
-      // Priority 2: coba ambil dari productRollsTable jika rollId masih ada
-      if (rollLengths.length === 0 && i.rollId) {
-        const rollIds = Array.from({ length: rollCount }, (_, idx) => (i.rollId as number) + idx);
-        const rolls = await db
-          .select({ id: productRollsTable.id, length: productRollsTable.originalLength })
-          .from(productRollsTable)
-          .where(inArray(productRollsTable.id, rollIds));
-        if (rolls.length > 0) {
-          rollLengths = rolls.map(r => parseFloat(r.length));
+      // Priority 2: coba ambil dari productBatchesTable jika batchId masih ada
+      if (batchWeights.length === 0 && i.batchId) {
+        const batchIds = Array.from({ length: kratCount }, (_, idx) => (i.batchId as number) + idx);
+        const krats = await db
+          .select({ id: productBatchesTable.id, length: productBatchesTable.originalWeight })
+          .from(productBatchesTable)
+          .where(inArray(productBatchesTable.id, batchIds));
+        if (krats.length > 0) {
+          batchWeights = krats.map(r => parseFloat(r.length));
         }
       }
 
       // Priority 3: fallback ke rata-rata
-      if (rollLengths.length === 0) {
-        const avg = Number(i.meters) / rollCount;
-        rollLengths = Array.from({ length: rollCount }, () => parseFloat(avg.toFixed(3)));
+      if (batchWeights.length === 0) {
+        const avg = Number(i.kgs) / kratCount;
+        batchWeights = Array.from({ length: kratCount }, () => parseFloat(avg.toFixed(3)));
       }
     }
-    return { ...i, rollLengths };
+    return { ...i, batchWeights };
   }));
 
   res.json({
@@ -670,14 +670,14 @@ router.get("/purchases/by-invoice", async (req, res): Promise<void> => {
     remainingAmount: numStr(purchase.totalAmount) - numStr(purchase.paidAmount),
     dueDate: purchase.dueDate?.toISOString() ?? null,
     createdAt: purchase.createdAt.toISOString(),
-    items: itemsWithRolls.map(i => ({
+    items: itemsWithKrats.map(i => ({
       ...i,
-      rollId: i.rollId,
-      rolls: numStr(i.rolls),
-      meters: numStr(i.meters),
-      pricePerMeter: numStr(i.pricePerMeter),
+      batchId: i.batchId,
+      krats: numStr(i.krats),
+      kgs: numStr(i.kgs),
+      pricePerKg: numStr(i.pricePerKg),
       subtotal: numStr(i.subtotal),
-      rollLengths: i.rollLengths,
+      batchWeights: i.batchWeights,
     })),
   });
 });
@@ -710,35 +710,35 @@ router.get("/purchases/:id", async (req, res): Promise<void> => {
       productName: productsTable.name,
       categoryId: productsTable.categoryId,
       categoryName: categoriesTable.name,
-      rollId: purchaseItemsTable.rollId,
-      rolls: purchaseItemsTable.rolls,
-      meters: purchaseItemsTable.meters,
-      pricePerMeter: purchaseItemsTable.pricePerMeter,
+      batchId: purchaseItemsTable.batchId,
+      krats: purchaseItemsTable.krats,
+      kgs: purchaseItemsTable.kgs,
+      pricePerKg: purchaseItemsTable.pricePerKg,
       subtotal: purchaseItemsTable.subtotal,
-      rollLengthsJson: purchaseItemsTable.rollLengthsJson,
+      batchWeightsJson: purchaseItemsTable.batchWeightsJson,
     })
     .from(purchaseItemsTable)
     .leftJoin(productsTable, eq(purchaseItemsTable.productId, productsTable.id))
     .leftJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
     .where(eq(purchaseItemsTable.purchaseId, id));
 
-  const itemsWithRolls = await Promise.all(items.map(async (i) => {
-    const rollCount = Number(i.rolls) || 0;
-    let rollLengths: number[] = [];
+  const itemsWithKrats = await Promise.all(items.map(async (i) => {
+    const kratCount = Number(i.krats) || 0;
+    let batchWeights: number[] = [];
     
-    // Prioritaskan dari snapshot JSON (karena ini tetap ada meski roll dihapus/cancelled)
-    if (i.rollLengthsJson) {
+    // Prioritaskan dari snapshot JSON (karena ini tetap ada meski krat dihapus/cancelled)
+    if (i.batchWeightsJson) {
       try {
-        rollLengths = JSON.parse(i.rollLengthsJson);
+        batchWeights = JSON.parse(i.batchWeightsJson);
       } catch (e) {}
     } 
-    // Fallback query ke productRollsTable untuk data lama yang belum punya JSON
-    else if (rollCount > 0 && i.rollId) {
-      const rollIds = Array.from({ length: rollCount }, (_, idx) => (i.rollId as number) + idx);
-      const rolls = await db.select({ length: productRollsTable.originalLength }).from(productRollsTable).where(inArray(productRollsTable.id, rollIds));
-      rollLengths = rolls.map(r => parseFloat(r.length));
+    // Fallback query ke productBatchesTable untuk data lama yang belum punya JSON
+    else if (kratCount > 0 && i.batchId) {
+      const batchIds = Array.from({ length: kratCount }, (_, idx) => (i.batchId as number) + idx);
+      const krats = await db.select({ length: productBatchesTable.originalWeight }).from(productBatchesTable).where(inArray(productBatchesTable.id, batchIds));
+      batchWeights = krats.map(r => parseFloat(r.length));
     }
-    return { ...i, rollLengths };
+    return { ...i, batchWeights };
   }));
 
   res.json({
@@ -748,14 +748,14 @@ router.get("/purchases/:id", async (req, res): Promise<void> => {
     remainingAmount: numStr(purchase.totalAmount) - numStr(purchase.paidAmount),
     dueDate: purchase.dueDate?.toISOString() ?? null,
     createdAt: purchase.createdAt.toISOString(),
-    items: itemsWithRolls.map(i => ({
+    items: itemsWithKrats.map(i => ({
       ...i,
-      rollId: i.rollId,
-      rolls: numStr(i.rolls),
-      meters: numStr(i.meters),
-      pricePerMeter: numStr(i.pricePerMeter),
+      batchId: i.batchId,
+      krats: numStr(i.krats),
+      kgs: numStr(i.kgs),
+      pricePerKg: numStr(i.pricePerKg),
       subtotal: numStr(i.subtotal),
-      rollLengths: i.rollLengths,
+      batchWeights: i.batchWeights,
     })),
   });
 
@@ -767,33 +767,33 @@ router.delete("/purchases/:id", async (req, res): Promise<void> => {
   if (!purchase) { res.status(404).json({ error: "Not found" }); return; }
 
   try {
-    // Get items into memory first (kept for stock rollback & mutations)
+    // Get items into memory first (kept for stock kratback & mutations)
     const items = await db.select().from(purchaseItemsTable).where(eq(purchaseItemsTable.purchaseId, id));
 
     for (const item of items) {
-      const rollCount = Number(item.rolls) || 0;
-      if (rollCount > 0 && item.rollId) {
-        // Delete rolls created for this purchase item using barcode pattern (PO invoice number)
-        // Rolls created by this purchase have IDs starting from item.rollId (first roll inserted)
-        const rollIds = Array.from({ length: rollCount }, (_, i) => (item.rollId as number) + i);
+      const kratCount = Number(item.krats) || 0;
+      if (kratCount > 0 && item.batchId) {
+        // Delete krats created for this purchase item using barcode pattern (PO invoice number)
+        // Krats created by this purchase have IDs starting from item.batchId (first krat inserted)
+        const batchIds = Array.from({ length: kratCount }, (_, i) => (item.batchId as number) + i);
         
-        // Only delete rolls that still belong to this product (safety check)
-        const rollsToDelete = await db.select()
-          .from(productRollsTable)
+        // Only delete krats that still belong to this product (safety check)
+        const kratsToDelete = await db.select()
+          .from(productBatchesTable)
           .where(
             and(
-              eq(productRollsTable.productId, item.productId),
-              inArray(productRollsTable.id, rollIds)
+              eq(productBatchesTable.productId, item.productId),
+              inArray(productBatchesTable.id, batchIds)
             )
           );
 
-        if (rollsToDelete.length > 0) {
-          const rollIdsToDelete = rollsToDelete.map(r => r.id);
+        if (kratsToDelete.length > 0) {
+          const batchIdsToDelete = kratsToDelete.map(r => r.id);
           // Unlink from sale_items to avoid FK constraint
-          await db.update(saleItemsTable).set({ rollId: null }).where(inArray(saleItemsTable.rollId, rollIdsToDelete));
+          await db.update(saleItemsTable).set({ batchId: null }).where(inArray(saleItemsTable.batchId, batchIdsToDelete));
           // Unlink from purchase_items to avoid FK constraint (soft delete keeps purchase_items)
-          await db.update(purchaseItemsTable).set({ rollId: null }).where(inArray(purchaseItemsTable.rollId, rollIdsToDelete));
-          await db.delete(productRollsTable).where(inArray(productRollsTable.id, rollIdsToDelete));
+          await db.update(purchaseItemsTable).set({ batchId: null }).where(inArray(purchaseItemsTable.batchId, batchIdsToDelete));
+          await db.delete(productBatchesTable).where(inArray(productBatchesTable.id, batchIdsToDelete));
         }
       }
 
@@ -801,20 +801,20 @@ router.delete("/purchases/:id", async (req, res): Promise<void> => {
       await db.insert(stockMutationsTable).values({
         productId: item.productId,
         type: "keluar",
-        rolls: item.rolls.toString(),
-        meters: item.meters.toString(),
+        krats: item.krats.toString(),
+        kgs: item.kgs.toString(),
         description: `Batal Pembelian ${purchase.invoiceNumber}`,
         reference: purchase.invoiceNumber,
       });
 
       // Sync product stock
-      const rolls = await db.select().from(productRollsTable).where(and(eq(productRollsTable.productId, item.productId), eq(productRollsTable.status, "available")));
-      const calculatedRollStock = rolls.length;
-      const calculatedMeterStock = rolls.reduce((sum, r) => sum + parseFloat(r.currentLength), 0);
+      const krats = await db.select().from(productBatchesTable).where(and(eq(productBatchesTable.productId, item.productId), eq(productBatchesTable.status, "available")));
+      const calculatedKratStock = krats.length;
+      const calculatedKgStock = krats.reduce((sum, r) => sum + parseFloat(r.currentWeight), 0);
 
       await db.execute(sql`
         UPDATE ${productsTable} 
-        SET roll_stock = ${calculatedRollStock}, meter_stock = ${calculatedMeterStock}, updated_at = NOW()
+        SET krat_stock = ${calculatedKratStock}, kg_stock = ${calculatedKgStock}, updated_at = NOW()
         WHERE id = ${item.productId}
       `);
     }
@@ -829,7 +829,7 @@ router.delete("/purchases/:id", async (req, res): Promise<void> => {
     }
 
     // SOFT DELETE: mark purchase as cancelled instead of hard deleting
-    // This preserves purchase_items so detail roll can be restored later
+    // This preserves purchase_items so detail krat can be restored later
     await db.update(purchasesTable).set({ status: "cancelled" } as any).where(eq(purchasesTable.id, id));
 
     broadcastRefresh();

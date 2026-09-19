@@ -9,8 +9,8 @@
 export interface StockMutationInput {
   productId: number;
   type: string;
-  rolls: number;
-  meters: number;
+  krats: number;
+  kgs: number;
   description: string;
   reference?: string;
 }

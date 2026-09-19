@@ -21,8 +21,8 @@ router.get("/mutations", async (req, res) => {
       productId: stockMutationsTable.productId,
       productName: productsTable.name,
       type: stockMutationsTable.type,
-      rolls: stockMutationsTable.rolls,
-      meters: stockMutationsTable.meters,
+      krats: stockMutationsTable.krats,
+      kgs: stockMutationsTable.kgs,
       description: stockMutationsTable.description,
       reference: stockMutationsTable.reference,
       createdAt: stockMutationsTable.createdAt,
@@ -34,8 +34,8 @@ router.get("/mutations", async (req, res) => {
 
   res.json(mutations.map(m => ({
     ...m,
-    rolls: numStr(m.rolls),
-    meters: numStr(m.meters),
+    krats: numStr(m.krats),
+    kgs: numStr(m.kgs),
     createdAt: m.createdAt.toISOString(),
   })));
 });
@@ -44,13 +44,13 @@ router.post("/mutations", async (req, res): Promise<void> => {
   const parsed = CreateMutationBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const { productId, type, rolls, meters, description, reference } = parsed.data;
+  const { productId, type, krats, kgs, description, reference } = parsed.data;
 
   const [mut] = await db.insert(stockMutationsTable).values({
     productId,
     type,
-    rolls: rolls.toString(),
-    meters: meters.toString(),
+    krats: krats.toString(),
+    kgs: kgs.toString(),
     description,
     reference: reference ?? null,
   }).returning();
@@ -62,13 +62,13 @@ router.post("/mutations", async (req, res): Promise<void> => {
   if (isIncoming) {
     await db.execute(sql`
       UPDATE ${productsTable} 
-      SET roll_stock = roll_stock + ${rolls}, meter_stock = meter_stock + ${meters}, updated_at = NOW()
+      SET krat_stock = krat_stock + ${krats}, kg_stock = kg_stock + ${kgs}, updated_at = NOW()
       WHERE id = ${productId}
     `);
   } else if (isOutgoing) {
     await db.execute(sql`
       UPDATE ${productsTable} 
-      SET roll_stock = roll_stock - ${rolls}, meter_stock = meter_stock - ${meters}, updated_at = NOW()
+      SET krat_stock = krat_stock - ${krats}, kg_stock = kg_stock - ${kgs}, updated_at = NOW()
       WHERE id = ${productId}
     `);
   }
@@ -78,8 +78,8 @@ router.post("/mutations", async (req, res): Promise<void> => {
   res.status(201).json({
     ...mut,
     productName: product?.name ?? null,
-    rolls: numStr(mut.rolls),
-    meters: numStr(mut.meters),
+    krats: numStr(mut.krats),
+    kgs: numStr(mut.kgs),
     createdAt: mut.createdAt.toISOString(),
   });
 });

@@ -510,9 +510,9 @@ export default function Pengaturan() {
         </div>
         <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
           <div>
-            <div className="font-semibold text-slate-700 text-sm">Fitur Keranjang & Detail Ukuran Roll</div>
+            <div className="font-semibold text-slate-700 text-sm">Fitur Keranjang & Detail Ukuran Krat</div>
             <div className="text-xs text-slate-500 mt-1 max-w-[400px]">
-              Jika diaktifkan, customer bisa melihat panjang roll spesifik dan memasukkannya ke Keranjang Belanja. Jika dimatikan, customer langsung order via WhatsApp tanpa tahu panjang roll spesifik.
+              Jika diaktifkan, customer bisa melihat panjang krat spesifik dan memasukkannya ke Keranjang Belanja. Jika dimatikan, customer langsung order via WhatsApp tanpa tahu panjang krat spesifik.
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -942,7 +942,7 @@ export default function Pengaturan() {
             <div className="space-y-1.5">
               <Label>Nama Satuan</Label>
               <Input
-                placeholder="mis: METER, YARD, KILOGRAM"
+                placeholder="mis: KG, YARD, KILOGRAM"
                 value={newUnitName}
                 onChange={(e) => setNewUnitName(e.target.value.toUpperCase())}
               />

@@ -8,9 +8,9 @@
 
 export interface SaleItemInput {
   productId: number;
-  rollId?: number;
-  rolls: number;
-  meters: number;
-  pricePerMeter: number;
+  batchId?: number;
+  krats: number;
+  kgs: number;
+  pricePerKg: number;
   subtotal: number;
 }

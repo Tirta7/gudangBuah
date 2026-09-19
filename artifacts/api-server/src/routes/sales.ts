@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { salesTable, saleItemsTable, customersTable, productsTable, categoriesTable, receivablesTable, paymentsTable, stockMutationsTable, productRollsTable, returnsTable, returnReturnedItemsTable, returnExchangedItemsTable } from "@workspace/db";
+import { salesTable, saleItemsTable, customersTable, productsTable, categoriesTable, receivablesTable, paymentsTable, stockMutationsTable, productBatchesTable, returnsTable, returnReturnedItemsTable, returnExchangedItemsTable } from "@workspace/db";
 import { eq, and, gte, lte, sql, desc, inArray, ne } from "drizzle-orm";
 import { CreateSaleBody } from "@workspace/api-zod";
 import { broadcastRefresh } from "../lib/websocket";
@@ -17,8 +17,8 @@ async function deductStockForItems(items: any[], invoiceNumber: string) {
     // Decrease product stock
     const [updatedProduct] = await db.update(productsTable)
       .set({
-        rollStock: sql`${productsTable.rollStock} - ${item.rolls}`,
-        meterStock: sql`${productsTable.meterStock} - ${item.meters}`,
+        kratStock: sql`${productsTable.kratStock} - ${item.krats}`,
+        kgStock: sql`${productsTable.kgStock} - ${item.kgs}`,
         updatedAt: sql`NOW()`
       })
       .where(eq(productsTable.id, item.productId))
@@ -27,11 +27,11 @@ async function deductStockForItems(items: any[], invoiceNumber: string) {
     // Trigger low stock notification
     if (updatedProduct) {
       const minStock = parseFloat(updatedProduct.minStock as string || "0");
-      if (Number(updatedProduct.rollStock) <= minStock) {
+      if (Number(updatedProduct.kratStock) <= minStock) {
         try {
           await pushService.sendNotificationToAdmins(
             "⚠️ Peringatan Stok Tipis",
-            `Bahan: ${updatedProduct.name}\nSisa Stok: ${updatedProduct.rollStock} Roll (Min: ${minStock})\nMohon segera lakukan pengadaan ulang.`,
+            `Bahan: ${updatedProduct.name}\nSisa Stok: ${updatedProduct.kratStock} Krat (Min: ${minStock})\nMohon segera lakukan pengadaan ulang.`,
             `/barang`
           );
         } catch (err) {
@@ -40,64 +40,64 @@ async function deductStockForItems(items: any[], invoiceNumber: string) {
       }
     }
 
-    // Deduct rolls logic
-    if (item.rollId) {
+    // Deduct krats logic
+    if (item.batchId) {
       await db.execute(sql`
-        UPDATE ${productRollsTable}
-        SET current_length = current_length - ${item.meters}, 
-            status = CASE WHEN current_length - ${item.meters} <= 0.01 THEN 'empty' ELSE 'available' END,
+        UPDATE ${productBatchesTable}
+        SET current_length = current_length - ${item.kgs}, 
+            status = CASE WHEN current_length - ${item.kgs} <= 0.01 THEN 'empty' ELSE 'available' END,
             updated_at = NOW()
-        WHERE id = ${item.rollId}
+        WHERE id = ${item.batchId}
       `);
     } else {
-      if (item.rolls > 0) {
-        const availableRolls = await db.select().from(productRollsTable)
+      if (item.krats > 0) {
+        const availableKrats = await db.select().from(productBatchesTable)
           .where(and(
-            eq(productRollsTable.productId, item.productId),
-            eq(productRollsTable.status, 'available')
+            eq(productBatchesTable.productId, item.productId),
+            eq(productBatchesTable.status, 'available')
           ));
-        const targetLength = item.meters / item.rolls;
-        const exactRolls = availableRolls.filter(r => Math.abs(parseFloat(r.currentLength) - targetLength) < 0.01);
+        const targetLength = item.kgs / item.krats;
+        const exactKrats = availableKrats.filter(r => Math.abs(parseFloat(r.currentWeight) - targetLength) < 0.01);
 
-        if (exactRolls.length >= item.rolls) {
-          const idsToDeduct = exactRolls.slice(0, item.rolls).map(r => r.id);
+        if (exactKrats.length >= item.krats) {
+          const idsToDeduct = exactKrats.slice(0, item.krats).map(r => r.id);
           for (const rId of idsToDeduct) {
             await db.execute(sql`
-              UPDATE ${productRollsTable}
+              UPDATE ${productBatchesTable}
               SET current_length = 0, status = 'empty', updated_at = NOW()
               WHERE id = ${rId}
             `);
           }
         } else {
-          let remainingMeters = item.meters;
-          for (const roll of availableRolls) {
-            if (remainingMeters <= 0.01) break;
-            const rollLen = parseFloat(roll.currentLength);
-            if (rollLen > remainingMeters) {
-              await db.execute(sql`UPDATE ${productRollsTable} SET current_length = current_length - ${remainingMeters}, updated_at = NOW() WHERE id = ${roll.id}`);
-              remainingMeters = 0;
+          let remainingKgs = item.kgs;
+          for (const krat of availableKrats) {
+            if (remainingKgs <= 0.01) break;
+            const kratLen = parseFloat(krat.currentWeight);
+            if (kratLen > remainingKgs) {
+              await db.execute(sql`UPDATE ${productBatchesTable} SET current_length = current_length - ${remainingKgs}, updated_at = NOW() WHERE id = ${krat.id}`);
+              remainingKgs = 0;
             } else {
-              await db.execute(sql`UPDATE ${productRollsTable} SET current_length = 0, status = 'empty', updated_at = NOW() WHERE id = ${roll.id}`);
-              remainingMeters -= rollLen;
+              await db.execute(sql`UPDATE ${productBatchesTable} SET current_length = 0, status = 'empty', updated_at = NOW() WHERE id = ${krat.id}`);
+              remainingKgs -= kratLen;
             }
           }
         }
-      } else if (item.meters > 0) {
-        let remainingMeters = item.meters;
-        const availableRolls = await db.select().from(productRollsTable)
+      } else if (item.kgs > 0) {
+        let remainingKgs = item.kgs;
+        const availableKrats = await db.select().from(productBatchesTable)
           .where(and(
-            eq(productRollsTable.productId, item.productId),
-            eq(productRollsTable.status, 'available')
+            eq(productBatchesTable.productId, item.productId),
+            eq(productBatchesTable.status, 'available')
           ));
-        for (const roll of availableRolls) {
-          if (remainingMeters <= 0.01) break;
-          const rollLen = parseFloat(roll.currentLength);
-          if (rollLen > remainingMeters + 0.01) {
-            await db.execute(sql`UPDATE ${productRollsTable} SET current_length = current_length - ${remainingMeters}, updated_at = NOW() WHERE id = ${roll.id}`);
-            remainingMeters = 0;
+        for (const krat of availableKrats) {
+          if (remainingKgs <= 0.01) break;
+          const kratLen = parseFloat(krat.currentWeight);
+          if (kratLen > remainingKgs + 0.01) {
+            await db.execute(sql`UPDATE ${productBatchesTable} SET current_length = current_length - ${remainingKgs}, updated_at = NOW() WHERE id = ${krat.id}`);
+            remainingKgs = 0;
           } else {
-            await db.execute(sql`UPDATE ${productRollsTable} SET current_length = 0, status = 'empty', updated_at = NOW() WHERE id = ${roll.id}`);
-            remainingMeters -= rollLen;
+            await db.execute(sql`UPDATE ${productBatchesTable} SET current_length = 0, status = 'empty', updated_at = NOW() WHERE id = ${krat.id}`);
+            remainingKgs -= kratLen;
           }
         }
       }
@@ -107,8 +107,8 @@ async function deductStockForItems(items: any[], invoiceNumber: string) {
     await db.insert(stockMutationsTable).values({
       productId: item.productId,
       type: "keluar",
-      rolls: item.rolls.toString(),
-      meters: item.meters.toString(),
+      krats: item.krats.toString(),
+      kgs: item.kgs.toString(),
       description: `Penjualan ${invoiceNumber}`,
       reference: invoiceNumber,
     });
@@ -121,26 +121,26 @@ async function reverseStockForItems(saleId: number, invoiceNumber: string) {
     .where(eq(saleItemsTable.saleId, saleId));
 
   for (const item of oldItems) {
-    const rolls = numStr(item.rolls as string);
-    const meters = numStr(item.meters as string);
+    const krats = numStr(item.krats as string);
+    const kgs = numStr(item.kgs as string);
 
     // Restore product stock
     await db.update(productsTable)
       .set({
-        rollStock: sql`${productsTable.rollStock} + ${rolls}`,
-        meterStock: sql`${productsTable.meterStock} + ${meters}`,
+        kratStock: sql`${productsTable.kratStock} + ${krats}`,
+        kgStock: sql`${productsTable.kgStock} + ${kgs}`,
         updatedAt: sql`NOW()`
       })
       .where(eq(productsTable.id, item.productId));
 
-    // Restore roll if specific roll was used
-    if (item.rollId) {
+    // Restore krat if specific krat was used
+    if (item.batchId) {
       await db.execute(sql`
-        UPDATE ${productRollsTable}
-        SET current_length = current_length + ${meters},
+        UPDATE ${productBatchesTable}
+        SET current_length = current_length + ${kgs},
             status = 'available',
             updated_at = NOW()
-        WHERE id = ${item.rollId}
+        WHERE id = ${item.batchId}
       `);
     }
 
@@ -148,8 +148,8 @@ async function reverseStockForItems(saleId: number, invoiceNumber: string) {
     await db.insert(stockMutationsTable).values({
       productId: item.productId,
       type: "masuk",
-      rolls: rolls.toString(),
-      meters: meters.toString(),
+      krats: krats.toString(),
+      kgs: kgs.toString(),
       description: `Pembatalan ${invoiceNumber}`,
       reference: invoiceNumber,
     });
@@ -292,7 +292,7 @@ router.post("/sales/import", async (req, res): Promise<void> => {
         const customer = findCustomer(customerName);
 
         // Parse items
-        const items: { productId: number; rolls: number; meters: number; pricePerMeter: number; subtotal: number }[] = [];
+        const items: { productId: number; krats: number; kgs: number; pricePerKg: number; subtotal: number }[] = [];
         const itemErrors: string[] = [];
 
         for (const row of rows) {
@@ -305,12 +305,12 @@ router.post("/sales/import", async (req, res): Promise<void> => {
             continue;
           }
 
-          const rolls = parseFloat(String(row["Roll"]).replace(",", ".")) || 0;
-          const meters = parseFloat(String(row["Meter/Yard"]).replace(",", ".")) || 0;
-          const pricePerMeter = parseFloat(String(row["Harga / Meter"]).replace(",", ".")) || 0;
-          const subtotal = parseFloat(String(row["Subtotal"]).replace(",", ".")) || Math.round(meters * pricePerMeter);
+          const krats = parseFloat(String(row["Krat"]).replace(",", ".")) || 0;
+          const kgs = parseFloat(String(row["Kg/Yard"]).replace(",", ".")) || 0;
+          const pricePerKg = parseFloat(String(row["Harga / Kg"]).replace(",", ".")) || 0;
+          const subtotal = parseFloat(String(row["Subtotal"]).replace(",", ".")) || Math.round(kgs * pricePerKg);
 
-          items.push({ productId: prod.id, rolls, meters, pricePerMeter, subtotal });
+          items.push({ productId: prod.id, krats, kgs, pricePerKg, subtotal });
         }
 
         if (itemErrors.length > 0) {
@@ -345,16 +345,16 @@ router.post("/sales/import", async (req, res): Promise<void> => {
           await db.insert(saleItemsTable).values({
             saleId: sale.id,
             productId: item.productId,
-            rolls: item.rolls.toString(),
-            meters: item.meters.toString(),
-            pricePerMeter: item.pricePerMeter.toString(),
+            krats: item.krats.toString(),
+            kgs: item.kgs.toString(),
+            pricePerKg: item.pricePerKg.toString(),
             subtotal: item.subtotal.toString(),
           });
 
           // Deduct stock
           await db.update(productsTable).set({
-            rollStock: sql`${productsTable.rollStock} - ${item.rolls}`,
-            meterStock: sql`${productsTable.meterStock} - ${item.meters}`,
+            kratStock: sql`${productsTable.kratStock} - ${item.krats}`,
+            kgStock: sql`${productsTable.kgStock} - ${item.kgs}`,
             updatedAt: sql`NOW()`,
           }).where(eq(productsTable.id, item.productId));
 
@@ -362,8 +362,8 @@ router.post("/sales/import", async (req, res): Promise<void> => {
           await db.insert(stockMutationsTable).values({
             productId: item.productId,
             type: "keluar",
-            rolls: item.rolls.toString(),
-            meters: item.meters.toString(),
+            krats: item.krats.toString(),
+            kgs: item.kgs.toString(),
             description: `Import Penjualan ${invoiceNumber}`,
             reference: invoiceNumber,
           });
@@ -432,9 +432,9 @@ router.get("/sales/export", async (req, res): Promise<void> => {
           saleId: saleItemsTable.saleId,
           productName: productsTable.name,
           categoryName: categoriesTable.name,
-          rolls: saleItemsTable.rolls,
-          meters: saleItemsTable.meters,
-          pricePerMeter: saleItemsTable.pricePerMeter,
+          krats: saleItemsTable.krats,
+          kgs: saleItemsTable.kgs,
+          pricePerKg: saleItemsTable.pricePerKg,
           subtotal: saleItemsTable.subtotal,
         })
         .from(saleItemsTable)
@@ -472,10 +472,10 @@ router.get("/sales/export", async (req, res): Promise<void> => {
           "Pelanggan": s.customerName || "Umum",
           "Kategori": "",
           "Produk / Barang": "",
-          "Roll": 0,
-          "Meter/Yard": 0,
-          "Detail Roll": "",
-          "Harga / Meter": 0,
+          "Krat": 0,
+          "Kg/Yard": 0,
+          "Detail Krat": "",
+          "Harga / Kg": 0,
           "Subtotal": 0,
           "Total Nota": totalAmt,
           "Sudah Dibayar": paidAmt,
@@ -487,16 +487,16 @@ router.get("/sales/export", async (req, res): Promise<void> => {
       } else {
         const groupedItems = new Map<string, any>();
         for (const item of items) {
-          const key = `${item.productId}_${item.pricePerMeter}`;
+          const key = `${item.productId}_${item.pricePerKg}`;
           if (!groupedItems.has(key)) {
-            groupedItems.set(key, { ...item, rolls: 0, meters: 0, subtotal: 0, rollLengths: [] });
+            groupedItems.set(key, { ...item, krats: 0, kgs: 0, subtotal: 0, batchWeights: [] });
           }
           const g = groupedItems.get(key);
-          g.rolls += parseFloat(item.rolls) || 0;
-          g.meters += parseFloat(item.meters) || 0;
+          g.krats += parseFloat(item.krats) || 0;
+          g.kgs += parseFloat(item.kgs) || 0;
           g.subtotal += parseFloat(item.subtotal) || 0;
-          if (item.rollId) {
-            g.rollLengths.push(parseFloat(item.meters) || 0);
+          if (item.batchId) {
+            g.batchWeights.push(parseFloat(item.kgs) || 0);
           }
         }
 
@@ -508,10 +508,10 @@ router.get("/sales/export", async (req, res): Promise<void> => {
             "Pelanggan": idx === 0 ? (s.customerName || "Umum") : "",
             "Kategori": item.categoryName || "",
             "Produk / Barang": item.productName || "",
-            "Roll": item.rolls,
-            "Meter/Yard": item.meters,
-            "Detail Roll": item.rollLengths.length > 0 ? item.rollLengths.map((r: number, i: number) => `R#${i + 1}: ${r}`).join(", ") : "",
-            "Harga / Meter": parseFloat(item.pricePerMeter) || 0,
+            "Krat": item.krats,
+            "Kg/Yard": item.kgs,
+            "Detail Krat": item.batchWeights.length > 0 ? item.batchWeights.map((r: number, i: number) => `R#${i + 1}: ${r}`).join(", ") : "",
+            "Harga / Kg": parseFloat(item.pricePerKg) || 0,
             "Subtotal": item.subtotal,
             "Total Nota": idx === 0 ? totalAmt : "",
             "Sudah Dibayar": idx === 0 ? paidAmt : "",
@@ -535,10 +535,10 @@ router.get("/sales/export", async (req, res): Promise<void> => {
       { wch: 22 },  // Pelanggan
       { wch: 18 },  // Kategori
       { wch: 24 },  // Produk
-      { wch: 8 },   // Roll
-      { wch: 12 },  // Meter/Yard
-      { wch: 40 },  // Detail Roll
-      { wch: 16 },  // Harga/Meter
+      { wch: 8 },   // Krat
+      { wch: 12 },  // Kg/Yard
+      { wch: 40 },  // Detail Krat
+      { wch: 16 },  // Harga/Kg
       { wch: 18 },  // Subtotal
       { wch: 18 },  // Sisa
       { wch: 14 },  // Metode
@@ -689,10 +689,10 @@ router.post("/sales", async (req, res): Promise<void> => {
       await db.insert(saleItemsTable).values({
         saleId: sale.id,
         productId: item.productId,
-        rollId: item.rollId ?? null,
-        rolls: item.rolls.toString(),
-        meters: item.meters.toString(),
-        pricePerMeter: item.pricePerMeter.toString(),
+        batchId: item.batchId ?? null,
+        krats: item.krats.toString(),
+        kgs: item.kgs.toString(),
+        pricePerKg: item.pricePerKg.toString(),
         subtotal: item.subtotal.toString(),
       });
     }
@@ -801,10 +801,10 @@ router.post("/sales/:id/pay", async (req, res): Promise<void> => {
     if (sale.status === 'draft') {
       const itemsForDeduction = items.map(i => ({
         productId: i.productId,
-        rollId: i.rollId,
-        rolls: numStr(i.rolls as string),
-        meters: numStr(i.meters as string),
-        pricePerMeter: numStr(i.pricePerMeter as string),
+        batchId: i.batchId,
+        krats: numStr(i.krats as string),
+        kgs: numStr(i.kgs as string),
+        pricePerKg: numStr(i.pricePerKg as string),
         subtotal: numStr(i.subtotal as string),
       }));
       await deductStockForItems(itemsForDeduction, invoiceNumber);
@@ -980,10 +980,10 @@ router.put("/sales/:id", async (req, res): Promise<void> => {
       await db.insert(saleItemsTable).values({
         saleId: id,
         productId: item.productId,
-        rollId: item.rollId ?? null,
-        rolls: item.rolls.toString(),
-        meters: item.meters.toString(),
-        pricePerMeter: item.pricePerMeter.toString(),
+        batchId: item.batchId ?? null,
+        krats: item.krats.toString(),
+        kgs: item.kgs.toString(),
+        pricePerKg: item.pricePerKg.toString(),
         subtotal: item.subtotal.toString(),
       });
     }
@@ -1074,10 +1074,10 @@ router.get("/sales/:id", async (req, res): Promise<void> => {
       categoryName: categoriesTable.name,
       primaryUnit: productsTable.primaryUnit,
       secondaryUnit: productsTable.secondaryUnit,
-      rollId: saleItemsTable.rollId,
-      rolls: saleItemsTable.rolls,
-      meters: saleItemsTable.meters,
-      pricePerMeter: saleItemsTable.pricePerMeter,
+      batchId: saleItemsTable.batchId,
+      krats: saleItemsTable.krats,
+      kgs: saleItemsTable.kgs,
+      pricePerKg: saleItemsTable.pricePerKg,
       subtotal: saleItemsTable.subtotal,
     })
     .from(saleItemsTable)
@@ -1100,10 +1100,10 @@ router.get("/sales/:id", async (req, res): Promise<void> => {
       categoryName: categoriesTable.name,
       primaryUnit: productsTable.primaryUnit,
       secondaryUnit: productsTable.secondaryUnit,
-      rollId: returnExchangedItemsTable.rollId,
-      rolls: returnExchangedItemsTable.rolls,
-      meters: returnExchangedItemsTable.meters,
-      pricePerMeter: returnExchangedItemsTable.pricePerMeter,
+      batchId: returnExchangedItemsTable.batchId,
+      krats: returnExchangedItemsTable.krats,
+      kgs: returnExchangedItemsTable.kgs,
+      pricePerKg: returnExchangedItemsTable.pricePerKg,
       subtotal: returnExchangedItemsTable.subtotal,
     })
     .from(returnExchangedItemsTable)
@@ -1115,9 +1115,9 @@ router.get("/sales/:id", async (req, res): Promise<void> => {
       const retItems = returnedItems.filter(ri => ri.returnId === r.id);
       const excItems = exchangedItems.filter(ei => ei.returnId === r.id).map(ei => ({
         ...ei,
-        rolls: numStr(ei.rolls as string),
-        meters: numStr(ei.meters as string),
-        pricePerMeter: numStr(ei.pricePerMeter as string),
+        krats: numStr(ei.krats as string),
+        kgs: numStr(ei.kgs as string),
+        pricePerKg: numStr(ei.pricePerKg as string),
         subtotal: numStr(ei.subtotal as string),
       }));
       return {
@@ -1188,9 +1188,9 @@ router.get("/sales/:id", async (req, res): Promise<void> => {
       return items.map(i => {
         const matchIndex = availableReturnedItems.findIndex(ri =>
           ri.productId === i.productId &&
-          (ri.rollId === i.rollId || (!ri.rollId && !i.rollId)) &&
-          parseFloat(ri.meters as string || "0") === parseFloat(i.meters as string || "0") &&
-          parseFloat(ri.rolls as string || "0") === parseFloat(i.rolls as string || "0")
+          (ri.batchId === i.batchId || (!ri.batchId && !i.batchId)) &&
+          parseFloat(ri.kgs as string || "0") === parseFloat(i.kgs as string || "0") &&
+          parseFloat(ri.krats as string || "0") === parseFloat(i.krats as string || "0")
         );
 
         let isReturned = false;
@@ -1205,10 +1205,10 @@ router.get("/sales/:id", async (req, res): Promise<void> => {
 
         return {
           ...i,
-          rollId: i.rollId,
-          rolls: numStr(i.rolls as string),
-          meters: numStr(i.meters as string),
-          pricePerMeter: numStr(i.pricePerMeter as string),
+          batchId: i.batchId,
+          krats: numStr(i.krats as string),
+          kgs: numStr(i.kgs as string),
+          pricePerKg: numStr(i.pricePerKg as string),
           subtotal: numStr(i.subtotal as string),
           isReturned,
           returns: itemReturns,
@@ -1217,10 +1217,10 @@ router.get("/sales/:id", async (req, res): Promise<void> => {
     })(),
     exchangedItems: exchangedItems.map(i => ({
       ...i,
-      rollId: i.rollId,
-      rolls: numStr(i.rolls),
-      meters: numStr(i.meters),
-      pricePerMeter: numStr(i.pricePerMeter),
+      batchId: i.batchId,
+      krats: numStr(i.krats),
+      kgs: numStr(i.kgs),
+      pricePerKg: numStr(i.pricePerKg),
       subtotal: numStr(i.subtotal),
       isExchangedItem: true
     })),

@@ -56,8 +56,8 @@ export interface RecentTransaction {
 export interface TopProduct {
   productId: number;
   productName: string;
-  totalRolls: number;
-  totalMeters: number;
+  totalKrats: number;
+  totalKgs: number;
   totalRevenue: number;
 }
 
@@ -101,11 +101,11 @@ export interface Product {
   imageUrl?: string | null;
   /** @nullable */
   description?: string | null;
-  pricePerMeter: number;
+  pricePerKg: number;
   /** @nullable */
-  pricePerRoll: number | null;
-  rollStock: number;
-  meterStock: number;
+  pricePerKrat: number | null;
+  kratStock: number;
+  kgStock: number;
   minStock: number;
   isLowStock?: boolean;
   createdAt: string;
@@ -121,34 +121,34 @@ export interface ProductInput {
   rackLocation?: string;
   imageUrl?: string | null;
   description?: string | null;
-  costPricePerMeter?: number;
-  costPricePerRoll?: number;
-  pricePerMeter?: number;
-  pricePerRoll?: number;
-  rollStock?: number;
-  meterStock?: number;
+  costPricePerKg?: number;
+  costPricePerKrat?: number;
+  pricePerKg?: number;
+  pricePerKrat?: number;
+  kratStock?: number;
+  kgStock?: number;
   minStock?: number;
-  rollLengths?: number[];
+  batchWeights?: number[];
 }
 
-export interface ProductRollInput {
+export interface ProductBatchInput {
   barcode?: string;
-  originalLength: number;
-  currentLength: number;
+  originalWeight: number;
+  currentWeight: number;
 }
 
-export interface ProductRollUpdateInput {
+export interface ProductBatchUpdateInput {
   barcode?: string;
-  originalLength?: number;
-  currentLength?: number;
+  originalWeight?: number;
+  currentWeight?: number;
 }
 
-export interface ProductRoll {
+export interface ProductBatch {
   id: number;
   productId: number;
   barcode: string;
-  originalLength: number;
-  currentLength: number;
+  originalWeight: number;
+  currentWeight: number;
   status: string;
   createdAt: string;
 }
@@ -163,14 +163,14 @@ export interface ProductUpdate {
   rackLocation?: string;
   imageUrl?: string | null;
   description?: string | null;
-  costPricePerMeter?: number;
-  costPricePerRoll?: number;
-  pricePerMeter?: number;
-  pricePerRoll?: number;
+  costPricePerKg?: number;
+  costPricePerKrat?: number;
+  pricePerKg?: number;
+  pricePerKrat?: number;
   minStock?: number;
-  rollStock?: number;
-  meterStock?: number;
-  rollLengths?: number[];
+  kratStock?: number;
+  kgStock?: number;
+  batchWeights?: number[];
 }
 
 export interface Customer {
@@ -242,19 +242,19 @@ export interface SaleItem {
   /** @nullable */
   productName?: string | null;
   /** @nullable */
-  rollId?: number | null;
-  rolls: number;
-  meters: number;
-  pricePerMeter: number;
+  batchId?: number | null;
+  krats: number;
+  kgs: number;
+  pricePerKg: number;
   subtotal: number;
 }
 
 export interface SaleItemInput {
   productId: number;
-  rollId?: number;
-  rolls: number;
-  meters: number;
-  pricePerMeter: number;
+  batchId?: number;
+  krats: number;
+  kgs: number;
+  pricePerKg: number;
   subtotal: number;
 }
 
@@ -339,23 +339,23 @@ export interface PurchaseItem {
   /** @nullable */
   productName?: string | null;
   /** @nullable */
-  rollId?: number | null;
-  rolls: number;
-  meters: number;
-  pricePerMeter: number;
+  batchId?: number | null;
+  krats: number;
+  kgs: number;
+  pricePerKg: number;
   subtotal: number;
-  rollLengths?: number[];
+  batchWeights?: number[];
 }
 
 export interface PurchaseItemInput {
   productId: number;
-  rollId?: number;
-  rolls: number;
-  meters: number;
-  pricePerMeter: number;
+  batchId?: number;
+  krats: number;
+  kgs: number;
+  pricePerKg: number;
   subtotal: number;
   barcode?: string;
-  rollLengths?: number[];
+  batchWeights?: number[];
 }
 
 export interface PurchaseDetail {
@@ -392,8 +392,8 @@ export interface StockMutation {
   /** @nullable */
   productName?: string | null;
   type: string;
-  rolls: number;
-  meters: number;
+  krats: number;
+  kgs: number;
   description: string;
   /** @nullable */
   reference?: string | null;
@@ -403,8 +403,8 @@ export interface StockMutation {
 export interface StockMutationInput {
   productId: number;
   type: string;
-  rolls: number;
-  meters: number;
+  krats: number;
+  kgs: number;
   description: string;
   reference?: string;
 }
@@ -511,8 +511,8 @@ export interface SalesSummaryReport {
   totalReturnExchanged: number;
   netReturnImpact: number;
   totalTransactions: number;
-  totalRolls: number;
-  totalMeters: number;
+  totalKrats: number;
+  totalKgs: number;
   cashRevenue: number;
   tempoRevenue: number;
 }
@@ -523,8 +523,8 @@ export interface StockSummaryItem {
   /** @nullable */
   categoryName: string | null;
   rackLocation?: string;
-  rollStock: number;
-  meterStock: number;
+  kratStock: number;
+  kgStock: number;
   value: number;
   isLowStock?: boolean;
 }
@@ -578,10 +578,10 @@ export interface ReturnReturnedItem {
   returnId?: number;
   productId?: number;
   productName?: string;
-  rollId?: number | null;
-  rolls?: string;
-  meters?: string;
-  pricePerMeter?: string;
+  batchId?: number | null;
+  krats?: string;
+  kgs?: string;
+  pricePerKg?: string;
   subtotal?: string;
 }
 
@@ -590,10 +590,10 @@ export interface ReturnExchangedItem {
   returnId?: number;
   productId?: number;
   productName?: string;
-  rollId?: number | null;
-  rolls?: string;
-  meters?: string;
-  pricePerMeter?: string;
+  batchId?: number | null;
+  krats?: string;
+  kgs?: string;
+  pricePerKg?: string;
   subtotal?: string;
 }
 
@@ -637,10 +637,10 @@ export const CreateReturnInputPaymentStatus = {
 
 export interface CreateReturnItemInput {
   productId: number;
-  rollId?: number | null;
-  rolls: number;
-  meters: number;
-  pricePerMeter: number;
+  batchId?: number | null;
+  krats: number;
+  kgs: number;
+  pricePerKg: number;
   subtotal: number;
 }
 

@@ -5,7 +5,7 @@ import {
   returnReturnedItemsTable,
   returnExchangedItemsTable,
   productsTable,
-  productRollsTable,
+  productBatchesTable,
   stockMutationsTable,
   cashEntriesTable,
   receivablesTable,
@@ -77,9 +77,9 @@ router.get("/returns/:id", async (req, res): Promise<void> => {
       productName: productsTable.name,
       primaryUnit: productsTable.primaryUnit,
       secondaryUnit: productsTable.secondaryUnit,
-      rolls: returnReturnedItemsTable.rolls,
-      meters: returnReturnedItemsTable.meters,
-      pricePerMeter: returnReturnedItemsTable.pricePerMeter,
+      krats: returnReturnedItemsTable.krats,
+      kgs: returnReturnedItemsTable.kgs,
+      pricePerKg: returnReturnedItemsTable.pricePerKg,
       subtotal: returnReturnedItemsTable.subtotal,
     })
     .from(returnReturnedItemsTable)
@@ -93,9 +93,9 @@ router.get("/returns/:id", async (req, res): Promise<void> => {
       productName: productsTable.name,
       primaryUnit: productsTable.primaryUnit,
       secondaryUnit: productsTable.secondaryUnit,
-      rolls: returnExchangedItemsTable.rolls,
-      meters: returnExchangedItemsTable.meters,
-      pricePerMeter: returnExchangedItemsTable.pricePerMeter,
+      krats: returnExchangedItemsTable.krats,
+      kgs: returnExchangedItemsTable.kgs,
+      pricePerKg: returnExchangedItemsTable.pricePerKg,
       subtotal: returnExchangedItemsTable.subtotal,
     })
     .from(returnExchangedItemsTable)
@@ -181,39 +181,39 @@ router.post("/returns", async (req, res): Promise<void> => {
       await db.insert(returnReturnedItemsTable).values({
         returnId: returnDoc.id,
         productId: item.productId,
-        rollId: item.rollId ?? null,
-        rolls: item.rolls.toString(),
-        meters: item.meters.toString(),
-        pricePerMeter: item.pricePerMeter.toString(),
+        batchId: item.batchId ?? null,
+        krats: item.krats.toString(),
+        kgs: item.kgs.toString(),
+        pricePerKg: item.pricePerKg.toString(),
         subtotal: item.subtotal.toString(),
       });
 
-      const rollOp = data.type === 'penjualan' ? '+' : '-';
+      const kratOp = data.type === 'penjualan' ? '+' : '-';
       
       await db.update(productsTable)
         .set({
-          rollStock: sql`${productsTable.rollStock} ${sql.raw(rollOp)} ${item.rolls}`,
-          meterStock: sql`${productsTable.meterStock} ${sql.raw(rollOp)} ${item.meters}`,
+          kratStock: sql`${productsTable.kratStock} ${sql.raw(kratOp)} ${item.krats}`,
+          kgStock: sql`${productsTable.kgStock} ${sql.raw(kratOp)} ${item.kgs}`,
           updatedAt: sql`NOW()`
         })
         .where(eq(productsTable.id, item.productId));
 
-      if (item.rollId) {
+      if (item.batchId) {
         await db.execute(sql`
-          UPDATE ${productRollsTable}
-          SET current_length = current_length ${sql.raw(rollOp)} ${item.meters},
-              status = CASE WHEN current_length ${sql.raw(rollOp)} ${item.meters} > 0.01 THEN 'available' ELSE 'empty' END,
+          UPDATE ${productBatchesTable}
+          SET current_length = current_length ${sql.raw(kratOp)} ${item.kgs},
+              status = CASE WHEN current_length ${sql.raw(kratOp)} ${item.kgs} > 0.01 THEN 'available' ELSE 'empty' END,
               updated_at = NOW()
-          WHERE id = ${item.rollId}
+          WHERE id = ${item.batchId}
         `);
       }
 
       await db.insert(stockMutationsTable).values({
         productId: item.productId,
-        rollId: item.rollId ?? null,
+        batchId: item.batchId ?? null,
         type: data.type === 'penjualan' ? 'retur_masuk' : 'retur_keluar',
-        rolls: item.rolls.toString(),
-        meters: item.meters.toString(),
+        krats: item.krats.toString(),
+        kgs: item.kgs.toString(),
         description: `Retur ${data.type === 'penjualan' ? 'Penjualan' : 'Pembelian'} ${returnNumber}`,
         reference: returnNumber,
       });
@@ -224,63 +224,63 @@ router.post("/returns", async (req, res): Promise<void> => {
       await db.insert(returnExchangedItemsTable).values({
         returnId: returnDoc.id,
         productId: item.productId,
-        rollId: item.rollId ?? null,
-        rolls: item.rolls.toString(),
-        meters: item.meters.toString(),
-        pricePerMeter: item.pricePerMeter.toString(),
+        batchId: item.batchId ?? null,
+        krats: item.krats.toString(),
+        kgs: item.kgs.toString(),
+        pricePerKg: item.pricePerKg.toString(),
         subtotal: item.subtotal.toString(),
       });
 
-      const rollOp = data.type === 'penjualan' ? '-' : '+';
+      const kratOp = data.type === 'penjualan' ? '-' : '+';
       
       await db.update(productsTable)
         .set({
-          rollStock: sql`${productsTable.rollStock} ${sql.raw(rollOp)} ${item.rolls}`,
-          meterStock: sql`${productsTable.meterStock} ${sql.raw(rollOp)} ${item.meters}`,
+          kratStock: sql`${productsTable.kratStock} ${sql.raw(kratOp)} ${item.krats}`,
+          kgStock: sql`${productsTable.kgStock} ${sql.raw(kratOp)} ${item.kgs}`,
           updatedAt: sql`NOW()`
         })
         .where(eq(productsTable.id, item.productId));
 
-      if (item.rollId) {
+      if (item.batchId) {
         await db.execute(sql`
-          UPDATE ${productRollsTable}
-          SET current_length = current_length ${sql.raw(rollOp)} ${item.meters},
-              status = CASE WHEN current_length ${sql.raw(rollOp)} ${item.meters} > 0.01 THEN 'available' ELSE 'empty' END,
+          UPDATE ${productBatchesTable}
+          SET current_length = current_length ${sql.raw(kratOp)} ${item.kgs},
+              status = CASE WHEN current_length ${sql.raw(kratOp)} ${item.kgs} > 0.01 THEN 'available' ELSE 'empty' END,
               updated_at = NOW()
-          WHERE id = ${item.rollId}
+          WHERE id = ${item.batchId}
         `);
       } else {
-        // Fallback or auto-deduct if exchanged items don't have rollId
-        if (item.rolls > 0) {
-          const availableRolls = await db.select().from(productRollsTable)
+        // Fallback or auto-deduct if exchanged items don't have batchId
+        if (item.krats > 0) {
+          const availableKrats = await db.select().from(productBatchesTable)
             .where(and(
-              eq(productRollsTable.productId, item.productId),
-              eq(productRollsTable.status, 'available')
+              eq(productBatchesTable.productId, item.productId),
+              eq(productBatchesTable.status, 'available')
             ));
           
-          const targetLength = item.meters / item.rolls;
-          const exactRolls = availableRolls.filter(r => Math.abs(parseFloat(r.currentLength) - targetLength) < 0.01);
+          const targetLength = item.kgs / item.krats;
+          const exactKrats = availableKrats.filter(r => Math.abs(parseFloat(r.currentWeight) - targetLength) < 0.01);
           
-          if (exactRolls.length >= item.rolls) {
-            const idsToDeduct = exactRolls.slice(0, item.rolls).map(r => r.id);
+          if (exactKrats.length >= item.krats) {
+            const idsToDeduct = exactKrats.slice(0, item.krats).map(r => r.id);
             for (const rId of idsToDeduct) {
                await db.execute(sql`
-                UPDATE ${productRollsTable}
+                UPDATE ${productBatchesTable}
                 SET current_length = 0, status = 'empty', updated_at = NOW()
                 WHERE id = ${rId}
               `);
             }
           } else {
-             let remainingMeters = item.meters;
-             for (const roll of availableRolls) {
-               if (remainingMeters <= 0.01) break;
-               const rollLen = parseFloat(roll.currentLength);
-               if (rollLen > remainingMeters) {
-                 await db.execute(sql`UPDATE ${productRollsTable} SET current_length = current_length - ${remainingMeters}, updated_at = NOW() WHERE id = ${roll.id}`);
-                 remainingMeters = 0;
+             let remainingKgs = item.kgs;
+             for (const krat of availableKrats) {
+               if (remainingKgs <= 0.01) break;
+               const kratLen = parseFloat(krat.currentWeight);
+               if (kratLen > remainingKgs) {
+                 await db.execute(sql`UPDATE ${productBatchesTable} SET current_length = current_length - ${remainingKgs}, updated_at = NOW() WHERE id = ${krat.id}`);
+                 remainingKgs = 0;
                } else {
-                 await db.execute(sql`UPDATE ${productRollsTable} SET current_length = 0, status = 'empty', updated_at = NOW() WHERE id = ${roll.id}`);
-                 remainingMeters -= rollLen;
+                 await db.execute(sql`UPDATE ${productBatchesTable} SET current_length = 0, status = 'empty', updated_at = NOW() WHERE id = ${krat.id}`);
+                 remainingKgs -= kratLen;
                }
              }
           }
@@ -289,10 +289,10 @@ router.post("/returns", async (req, res): Promise<void> => {
 
       await db.insert(stockMutationsTable).values({
         productId: item.productId,
-        rollId: item.rollId ?? null,
+        batchId: item.batchId ?? null,
         type: data.type === 'penjualan' ? 'retur_keluar' : 'retur_masuk',
-        rolls: item.rolls.toString(),
-        meters: item.meters.toString(),
+        krats: item.krats.toString(),
+        kgs: item.kgs.toString(),
         description: `Tukar Pengganti Retur ${returnNumber}`,
         reference: returnNumber,
       });

@@ -20,7 +20,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { formatRupiah, formatNumber } from "@/lib/utils";
-import { ProductRollsModal } from "@/components/ProductRollsModal";
+import { ProductBatchesModal } from "@/components/ProductBatchesModal";
 
 const API_BASE = window.location.origin;
 
@@ -32,14 +32,14 @@ const schema = z.object({
   secondaryUnit: z.string().optional(),
   lotNumber: z.string().optional(),
   rackLocation: z.string().optional(),
-  costPricePerMeter: z.number().min(0, "Harga beli tidak boleh negatif"),
-  costPricePerRoll: z.number().optional(),
-  pricePerMeter: z.number().min(0, "Harga jual tidak boleh negatif"),
-  pricePerRoll: z.number().optional(),
-  rollStock: z.number().min(0).optional(),
-  meterStock: z.number().min(0).optional(),
+  costPricePerKg: z.number().min(0, "Harga beli tidak boleh negatif"),
+  costPricePerKrat: z.number().optional(),
+  pricePerKg: z.number().min(0, "Harga jual tidak boleh negatif"),
+  pricePerKrat: z.number().optional(),
+  kratStock: z.number().min(0).optional(),
+  kgStock: z.number().min(0).optional(),
   minStock: z.number().min(0),
-  rollLengths: z.array(z.any()).optional(),
+  batchWeights: z.array(z.any()).optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -51,8 +51,8 @@ export default function Barang() {
   const [showLowStock, setShowLowStock] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [viewRollsId, setViewRollsId] = useState<number | null>(null);
-  const [viewRollsName, setViewRollsName] = useState<string>("");
+  const [viewKratsId, setViewKratsId] = useState<number | null>(null);
+  const [viewKratsName, setViewKratsName] = useState<string>("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -85,7 +85,7 @@ export default function Barang() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", barcode: "", primaryUnit: "METER", secondaryUnit: "ROLL", lotNumber: "", rackLocation: "", costPricePerMeter: 0, pricePerMeter: 0, minStock: 0, rollStock: 0, meterStock: 0 },
+    defaultValues: { name: "", barcode: "", primaryUnit: "KG", secondaryUnit: "KRAT", lotNumber: "", rackLocation: "", costPricePerKg: 0, pricePerKg: 0, minStock: 0, kratStock: 0, kgStock: 0 },
   });
 
   const createMutation = useCreateProduct({
@@ -109,13 +109,13 @@ export default function Barang() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const parsedRollLengths = data.rollLengths?.map(r => {
+      const parsedKratLengths = data.batchWeights?.map(r => {
         if (typeof r === 'string') {
           return parseFloat(r.replace(',', '.')) || 0;
         }
         return r || 0;
       });
-      const payload = { ...data, imageUrl: imageUrl ?? undefined, rollLengths: parsedRollLengths };
+      const payload = { ...data, imageUrl: imageUrl ?? undefined, batchWeights: parsedKratLengths };
       if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, data: payload });
       } else {
@@ -164,7 +164,7 @@ export default function Barang() {
   };
 
   const openCreate = () => {
-    form.reset({ name: "", barcode: "", primaryUnit: "METER", secondaryUnit: "ROLL", lotNumber: "", rackLocation: "", costPricePerMeter: 0, pricePerMeter: 0, minStock: 0, rollStock: 0, meterStock: 0, rollLengths: [] });
+    form.reset({ name: "", barcode: "", primaryUnit: "KG", secondaryUnit: "KRAT", lotNumber: "", rackLocation: "", costPricePerKg: 0, pricePerKg: 0, minStock: 0, kratStock: 0, kgStock: 0, batchWeights: [] });
     setEditingId(null);
     setImageUrl(null);
     setIsOpen(true);
@@ -175,16 +175,16 @@ export default function Barang() {
       name: p.name,
       categoryId: p.categoryId,
       barcode: p.barcode || "",
-      primaryUnit: p.primaryUnit || "METER",
-      secondaryUnit: p.secondaryUnit || "ROLL",
+      primaryUnit: p.primaryUnit || "KG",
+      secondaryUnit: p.secondaryUnit || "KRAT",
       lotNumber: p.lotNumber || "",
       rackLocation: p.rackLocation || "",
-      costPricePerMeter: Number(p.costPricePerMeter ?? 0),
-      costPricePerRoll: p.costPricePerRoll != null ? Number(p.costPricePerRoll) : undefined,
-      pricePerMeter: Number(p.pricePerMeter ?? 0),
-      pricePerRoll: p.pricePerRoll != null ? Number(p.pricePerRoll) : undefined,
-      rollStock: Number(p.rollStock ?? 0),
-      meterStock: Number(p.meterStock ?? 0),
+      costPricePerKg: Number(p.costPricePerKg ?? 0),
+      costPricePerKrat: p.costPricePerKrat != null ? Number(p.costPricePerKrat) : undefined,
+      pricePerKg: Number(p.pricePerKg ?? 0),
+      pricePerKrat: p.pricePerKrat != null ? Number(p.pricePerKrat) : undefined,
+      kratStock: Number(p.kratStock ?? 0),
+      kgStock: Number(p.kgStock ?? 0),
       minStock: Number(p.minStock ?? 0),
     });
     setEditingId(p.id);
@@ -192,9 +192,9 @@ export default function Barang() {
     setIsOpen(true);
   };
 
-  const openViewRolls = (p: any) => {
-    setViewRollsId(p.id);
-    setViewRollsName(p.name);
+  const openViewKrats = (p: any) => {
+    setViewKratsId(p.id);
+    setViewKratsName(p.name);
   };
 
   const baseProducts = products?.filter(p => selectedCategoryId === null ? true : p.categoryId === selectedCategoryId) || [];
@@ -314,9 +314,9 @@ export default function Barang() {
           <div className="bg-white border border-slate-100 rounded-xl px-2.5 py-2 flex items-center gap-1.5">
             <LayoutGrid className="w-3.5 h-3.5 text-slate-400 shrink-0" strokeWidth={1.5} />
             <div className="min-w-0">
-              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Roll</p>
+              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Krat</p>
               <p className="text-xs font-black text-slate-800 leading-tight truncate">
-                {formatNumber(summaryProducts?.reduce((s, p) => s + (Number(p.rollStock) || 0), 0) ?? 0)}
+                {formatNumber(summaryProducts?.reduce((s, p) => s + (Number(p.kratStock) || 0), 0) ?? 0)}
               </p>
             </div>
           </div>
@@ -325,7 +325,7 @@ export default function Barang() {
             <div className="min-w-0">
               <p className="text-[8px] font-bold text-violet-400 uppercase tracking-wider">Yard</p>
               <p className="text-xs font-black text-violet-800 leading-tight truncate">
-                {formatNumber(summaryProducts?.reduce((s, p) => s + (Number(p.meterStock) || 0), 0) ?? 0)}
+                {formatNumber(summaryProducts?.reduce((s, p) => s + (Number(p.kgStock) || 0), 0) ?? 0)}
               </p>
             </div>
           </div>
@@ -394,10 +394,10 @@ export default function Barang() {
                         <span className="text-[10px] text-slate-200">·</span>
                         <span className={`text-[10px] font-semibold ${
                           isLowStock ? 'text-amber-500' : 'text-slate-500'
-                        }`}>{formatNumber(p.rollStock)} roll</span>
+                        }`}>{formatNumber(p.kratStock)} krat</span>
                         <span className="text-[10px] text-slate-200">·</span>
                         <span className="text-[11px] font-bold text-violet-700">
-                          {formatRupiah(p.pricePerMeter)}<span className="text-[9px] text-slate-300 font-normal">/yd</span>
+                          {formatRupiah(p.pricePerKg)}<span className="text-[9px] text-slate-300 font-normal">/yd</span>
                         </span>
                       </div>
                     </div>
@@ -405,7 +405,7 @@ export default function Barang() {
                     {/* Actions */}
                     <div className="flex items-center gap-1 shrink-0">
                       <button
-                        onClick={() => openViewRolls(p)}
+                        onClick={() => openViewKrats(p)}
                         className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center active:scale-95 transition-transform border border-violet-100"
                       >
                         <LayoutGrid className="h-4 w-4" />
@@ -467,15 +467,15 @@ export default function Barang() {
                             </div>
                           </td>
                           <td className="py-2.5 px-4 whitespace-nowrap">
-                            <span className="font-bold text-slate-800 text-xs">{formatRupiah(p.pricePerMeter)}</span>
+                            <span className="font-bold text-slate-800 text-xs">{formatRupiah(p.pricePerKg)}</span>
                             <span className="text-[9px] text-slate-400 ml-1">/{p.primaryUnit}</span>
                           </td>
                           <td className="py-2.5 px-4 whitespace-nowrap">
-                            <span className="font-semibold text-slate-600 text-xs">{formatRupiah((p as any).costPricePerMeter)}</span>
+                            <span className="font-semibold text-slate-600 text-xs">{formatRupiah((p as any).costPricePerKg)}</span>
                           </td>
                           <td className="py-2.5 px-4 text-center">
-                            <div className={`font-bold text-xs ${isLowStock ? 'text-amber-600' : 'text-slate-700'}`}>{formatNumber(p.meterStock)}</div>
-                            <div className="text-[9px] text-slate-400">{formatNumber(p.rollStock)} Roll</div>
+                            <div className={`font-bold text-xs ${isLowStock ? 'text-amber-600' : 'text-slate-700'}`}>{formatNumber(p.kgStock)}</div>
+                            <div className="text-[9px] text-slate-400">{formatNumber(p.kratStock)} Krat</div>
                           </td>
                           <td className="py-2.5 px-4 text-center">
                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${isLowStock ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>
@@ -484,7 +484,7 @@ export default function Barang() {
                           </td>
                           <td className="py-2.5 px-4 text-center">
                             <div className="flex items-center justify-center gap-1">
-                              <Button variant="ghost" size="icon" className="h-6 w-6 text-violet-600 hover:bg-violet-50 rounded-md" onClick={() => openViewRolls(p)}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-violet-600 hover:bg-violet-50 rounded-md" onClick={() => openViewKrats(p)}>
                                 <LayoutGrid className="h-3 w-3" />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-500 hover:bg-slate-100 rounded-md" onClick={() => openEdit(p)}>
@@ -561,7 +561,7 @@ export default function Barang() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(95vh - 5rem)' }}>
               
-              {/* Scrollable Body */}
+              {/* scrollable Body */}
               <div className="overflow-y-auto bg-slate-50/50 flex-1">
                 <div className="pb-6">
               
@@ -674,14 +674,14 @@ export default function Barang() {
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="costPricePerMeter" render={({ field }) => (
+                    <FormField control={form.control} name="costPricePerKg" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs font-semibold text-slate-600">Harga Beli (Rp)</FormLabel>
                         <FormControl><Input type="number" step="any" min={0} className="h-9 bg-white border-slate-200 rounded-xl text-sm" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="pricePerMeter" render={({ field }) => (
+                    <FormField control={form.control} name="pricePerKg" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs font-semibold text-slate-600">Harga Jual (Rp)</FormLabel>
                         <FormControl><Input type="number" step="any" min={0} className="h-9 bg-white border-slate-200 rounded-xl text-sm" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
@@ -706,14 +706,14 @@ export default function Barang() {
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="costPricePerRoll" render={({ field }) => (
+                    <FormField control={form.control} name="costPricePerKrat" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs font-semibold text-slate-600">Harga Beli Grosir (Rp)</FormLabel>
                         <FormControl><Input type="number" step="any" min={0} placeholder="Opsional" className="h-9 bg-white border-slate-200 rounded-xl text-sm" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="pricePerRoll" render={({ field }) => (
+                    <FormField control={form.control} name="pricePerKrat" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs font-semibold text-slate-600">Harga Jual Grosir (Rp)</FormLabel>
                         <FormControl><Input type="number" step="any" min={0} placeholder="Opsional" className="h-9 bg-white border-slate-200 rounded-xl text-sm" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} /></FormControl>
@@ -730,23 +730,23 @@ export default function Barang() {
                 
                 <div className="bg-white rounded-[20px] p-4 sm:p-5 border border-slate-100 shadow-sm space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <FormField control={form.control} name="rollStock" render={({ field }) => (
+                  <FormField control={form.control} name="kratStock" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs font-semibold text-slate-600">Jumlah Roll Fisik</FormLabel>
+                      <FormLabel className="text-xs font-semibold text-slate-600">Jumlah Krat Fisik</FormLabel>
                       <FormControl>
                         <Input type="number" step="1" min={0} className="h-10 bg-white border-slate-200 rounded-xl focus-visible:ring-violet-500"
                           {...field}
                           onChange={e => {
                             const val = parseInt(e.target.value) || 0;
                             field.onChange(val);
-                            const currentLengths = form.getValues('rollLengths') || [];
-                            const newLengths = Array.from({ length: val }, (_, i) => currentLengths[i] !== undefined ? currentLengths[i] : "");
-                            form.setValue('rollLengths', newLengths);
+                            const currentWeights = form.getValues('batchWeights') || [];
+                            const newLengths = Array.from({ length: val }, (_, i) => currentWeights[i] !== undefined ? currentWeights[i] : "");
+                            form.setValue('batchWeights', newLengths);
                             const total = newLengths.reduce((a, b) => {
                               const bNum = typeof b === 'string' ? parseFloat(b.replace(',', '.')) : b;
                               return a + (bNum || 0);
                             }, 0);
-                            form.setValue('meterStock', parseFloat(total.toFixed(3)));
+                            form.setValue('kgStock', parseFloat(total.toFixed(3)));
                           }}
                         />
                       </FormControl>
@@ -754,9 +754,9 @@ export default function Barang() {
                     </FormItem>
                   )} />
 
-                  <FormField control={form.control} name="meterStock" render={({ field }) => (
+                  <FormField control={form.control} name="kgStock" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs font-semibold text-slate-600">Total Stok Ecer (Yard/Meter)</FormLabel>
+                      <FormLabel className="text-xs font-semibold text-slate-600">Total Stok Ecer (Yard/Kg)</FormLabel>
                       <FormControl>
                         <Input type="number" step="any" min={0} readOnly
                           className="h-10 bg-violet-50 border-violet-200 rounded-xl font-bold text-violet-700 cursor-not-allowed"
@@ -769,7 +769,7 @@ export default function Barang() {
 
                   <FormField control={form.control} name="minStock" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs font-semibold text-slate-600">Min. Stok Peringatan (Roll)</FormLabel>
+                      <FormLabel className="text-xs font-semibold text-slate-600">Min. Stok Peringatan (Krat)</FormLabel>
                       <FormControl>
                         <Input type="number" step="any" min={0} className="h-10 bg-white border-slate-200 rounded-xl focus-visible:ring-violet-500"
                           {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
@@ -780,47 +780,47 @@ export default function Barang() {
                   )} />
                 </div>
 
-                {/* Roll lengths grid */}
-                {(form.watch('rollStock') || 0) > 0 && !editingId && (() => {
-                  const currentLengths = form.watch('rollLengths') || [];
+                {/* Krat lengths grid */}
+                {(form.watch('kratStock') || 0) > 0 && !editingId && (() => {
+                  const currentWeights = form.watch('batchWeights') || [];
                   return (
                     <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex flex-col gap-3">
-                      <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider shrink-0">Detail Panjang Tiap Roll (Yard/Meter)</p>
+                      <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider shrink-0">Detail Panjang Tiap Krat (Yard/Kg)</p>
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-45 overflow-y-auto pr-1.5">
-                        {Array.from({ length: form.watch('rollStock') || 0 }).map((_, i) => (
+                        {Array.from({ length: form.watch('kratStock') || 0 }).map((_, i) => (
                           <div key={i} className="space-y-1 relative group">
-                            <label className="text-[10px] font-bold text-amber-600">Roll #{i + 1}</label>
+                            <label className="text-[10px] font-bold text-amber-600">Krat #{i + 1}</label>
                             <Input
                               type="text" inputMode="decimal" placeholder="0"
                               className="h-8 text-sm text-center bg-white border-amber-200 rounded-lg focus-visible:ring-amber-400"
-                              value={currentLengths[i] !== undefined ? currentLengths[i] : ''}
+                              value={currentWeights[i] !== undefined ? currentWeights[i] : ''}
                               onChange={e => {
                                 const val = e.target.value;
-                                const newLengths = [...(form.getValues('rollLengths') || [])];
+                                const newLengths = [...(form.getValues('batchWeights') || [])];
                                 newLengths[i] = val;
-                                form.setValue('rollLengths', newLengths, { shouldValidate: true, shouldDirty: true });
+                                form.setValue('batchWeights', newLengths, { shouldValidate: true, shouldDirty: true });
                                 const total = newLengths.reduce((a, b) => {
                                   const bNum = typeof b === 'string' ? parseFloat(b.replace(',', '.')) : b;
                                   return a + (bNum || 0);
                                 }, 0);
-                                form.setValue('meterStock', parseFloat(total.toFixed(3)), { shouldValidate: true, shouldDirty: true });
+                                form.setValue('kgStock', parseFloat(total.toFixed(3)), { shouldValidate: true, shouldDirty: true });
                               }}
                             />
                             <button 
                               type="button" 
                               onClick={() => {
-                                const newLengths = [...(form.getValues('rollLengths') || [])];
+                                const newLengths = [...(form.getValues('batchWeights') || [])];
                                 newLengths.splice(i, 1);
-                                form.setValue('rollLengths', newLengths, { shouldValidate: true, shouldDirty: true });
-                                form.setValue('rollStock', newLengths.length, { shouldValidate: true, shouldDirty: true });
+                                form.setValue('batchWeights', newLengths, { shouldValidate: true, shouldDirty: true });
+                                form.setValue('kratStock', newLengths.length, { shouldValidate: true, shouldDirty: true });
                                 const total = newLengths.reduce((a, b) => {
                                   const bNum = typeof b === 'string' ? parseFloat(b.replace(',', '.')) : b;
                                   return a + (bNum || 0);
                                 }, 0);
-                                form.setValue('meterStock', parseFloat(total.toFixed(3)), { shouldValidate: true, shouldDirty: true });
+                                form.setValue('kgStock', parseFloat(total.toFixed(3)), { shouldValidate: true, shouldDirty: true });
                               }}
                               className="absolute -top-1 -right-1 bg-red-100 hover:bg-red-200 text-red-600 rounded-full p-0.5 transition-opacity"
-                              title="Hapus Roll Ini"
+                              title="Hapus Krat Ini"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -832,7 +832,7 @@ export default function Barang() {
                 })()}
                 </div>
               </div>
-              {/* End of Scrollable Body */}
+              {/* End of scrollable Body */}
               </div>
             </div>
 
@@ -865,11 +865,11 @@ export default function Barang() {
         </DrawerContent>
       </Drawer>
 
-      <ProductRollsModal 
-        productId={viewRollsId} 
-        productName={viewRollsName} 
-        isOpen={!!viewRollsId} 
-        onClose={() => setViewRollsId(null)} 
+      <ProductBatchesModal 
+        productId={viewKratsId} 
+        productName={viewKratsName} 
+        isOpen={!!viewKratsId} 
+        onClose={() => setViewKratsId(null)} 
       />
     </div>
   );

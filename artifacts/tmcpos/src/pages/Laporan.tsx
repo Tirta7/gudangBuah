@@ -384,7 +384,7 @@ export default function Laporan() {
                       <h3 className="font-bold text-slate-800">Penjualan per Produk</h3>
                       <p className="text-xs text-slate-400 mt-0.5">Top produk dalam periode ini</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => exportCSV((salesReport as any).byProduct, "laporan-produk", { productName: "Produk", totalMeters: "Total Meter", totalRevenue: "Revenue" })}
+                    <Button variant="outline" size="sm" onClick={() => exportCSV((salesReport as any).byProduct, "laporan-produk", { productName: "Produk", totalKgs: "Total Kg", totalRevenue: "Revenue" })}
                       className="rounded-xl h-8 text-xs font-semibold gap-1.5">
                       <Download className="h-3.5 w-3.5" /> Export CSV
                     </Button>
@@ -407,7 +407,7 @@ export default function Laporan() {
                         <TableHeader className="bg-slate-50">
                           <TableRow className="border-slate-100">
                             <TableHead className="font-semibold text-slate-600 h-10 whitespace-nowrap">Produk</TableHead>
-                            <TableHead className="text-right font-semibold text-slate-600 h-10 whitespace-nowrap">Qty (Meter)</TableHead>
+                            <TableHead className="text-right font-semibold text-slate-600 h-10 whitespace-nowrap">Qty (Kg)</TableHead>
                             <TableHead className="text-right font-semibold text-slate-600 h-10 whitespace-nowrap">Revenue</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -415,7 +415,7 @@ export default function Laporan() {
                           {(salesReport as any).byProduct?.slice((currentSalesPage - 1) * PAGE_SIZE, currentSalesPage * PAGE_SIZE).map((p: any) => (
                             <TableRow key={p.productId} className="border-slate-50 hover:bg-slate-50/50">
                               <TableCell className="font-medium text-slate-800 text-sm whitespace-nowrap">{p.productName}</TableCell>
-                              <TableCell className="text-right text-sm text-slate-600 whitespace-nowrap">{formatNumber(p.totalMeters)} m</TableCell>
+                              <TableCell className="text-right text-sm text-slate-600 whitespace-nowrap">{formatNumber(p.totalKgs)} m</TableCell>
                               <TableCell className="text-right font-bold text-slate-900 text-sm whitespace-nowrap">{formatRupiah(p.totalRevenue)}</TableCell>
                             </TableRow>
                           ))}
@@ -734,7 +734,7 @@ export default function Laporan() {
                     <h3 className="font-bold text-slate-800">Ringkasan Stok per Produk</h3>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => exportCSV((stockReport as any).products, "laporan-stok", {
-                    name: "Nama Barang", categoryName: "Kategori", meterStock: "Stok Meter", rollStock: "Stok Roll", stockValue: "Nilai Stok"
+                    name: "Nama Barang", categoryName: "Kategori", kgStock: "Stok Kg", kratStock: "Stok Krat", stockValue: "Nilai Stok"
                   })}
                     className="rounded-xl h-8 text-xs font-semibold gap-1.5">
                     <Download className="h-3.5 w-3.5" /> Export CSV
@@ -757,12 +757,12 @@ export default function Laporan() {
                       <div className="flex justify-between items-end mt-1 pt-2 border-t border-slate-100/60">
                         <div className="flex gap-4">
                           <div>
-                            <span className="text-[10px] text-slate-400 block">Stok Meter</span>
-                            <span className="text-xs font-bold text-slate-700">{formatNumber(p.meterStock)} m</span>
+                            <span className="text-[10px] text-slate-400 block">Stok Kg</span>
+                            <span className="text-xs font-bold text-slate-700">{formatNumber(p.kgStock)} m</span>
                           </div>
                           <div>
-                            <span className="text-[10px] text-slate-400 block">Stok Roll</span>
-                            <span className="text-xs font-semibold text-slate-600">{formatNumber(p.rollStock)}</span>
+                            <span className="text-[10px] text-slate-400 block">Stok Krat</span>
+                            <span className="text-xs font-semibold text-slate-600">{formatNumber(p.kratStock)}</span>
                           </div>
                         </div>
                         <div className="text-right">
@@ -781,8 +781,8 @@ export default function Laporan() {
                       <TableRow className="border-slate-100">
                         <TableHead className="h-10 font-semibold text-slate-600 text-xs whitespace-nowrap">Nama Barang</TableHead>
                         <TableHead className="h-10 font-semibold text-slate-600 text-xs whitespace-nowrap">Kategori</TableHead>
-                        <TableHead className="h-10 font-semibold text-slate-600 text-xs text-right whitespace-nowrap">Stok Meter</TableHead>
-                        <TableHead className="h-10 font-semibold text-slate-600 text-xs text-right whitespace-nowrap">Stok Roll</TableHead>
+                        <TableHead className="h-10 font-semibold text-slate-600 text-xs text-right whitespace-nowrap">Stok Kg</TableHead>
+                        <TableHead className="h-10 font-semibold text-slate-600 text-xs text-right whitespace-nowrap">Stok Krat</TableHead>
                         <TableHead className="h-10 font-semibold text-slate-600 text-xs text-right whitespace-nowrap">Nilai Stok</TableHead>
                         <TableHead className="h-10 font-semibold text-slate-600 text-xs text-center whitespace-nowrap">Status</TableHead>
                       </TableRow>
@@ -792,8 +792,8 @@ export default function Laporan() {
                         <TableRow key={p.id} className={`border-slate-50 hover:bg-slate-50/50 ${p.isLowStock ? "bg-red-50/20" : ""}`}>
                           <TableCell className="font-medium text-slate-800 text-sm whitespace-nowrap">{p.name}</TableCell>
                           <TableCell className="text-slate-500 text-sm whitespace-nowrap">{p.categoryName || "—"}</TableCell>
-                          <TableCell className="text-right font-semibold text-slate-800 text-sm whitespace-nowrap">{formatNumber(p.meterStock)} m</TableCell>
-                          <TableCell className="text-right text-slate-600 text-sm whitespace-nowrap">{formatNumber(p.rollStock)}</TableCell>
+                          <TableCell className="text-right font-semibold text-slate-800 text-sm whitespace-nowrap">{formatNumber(p.kgStock)} m</TableCell>
+                          <TableCell className="text-right text-slate-600 text-sm whitespace-nowrap">{formatNumber(p.kratStock)}</TableCell>
                           <TableCell className="text-right font-bold text-slate-900 text-sm whitespace-nowrap">{formatRupiah(p.stockValue)}</TableCell>
                           <TableCell className="text-center whitespace-nowrap">
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${p.isLowStock ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>

@@ -6,12 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ProductRoll {
+export interface ProductBatch {
   id: number;
   productId: number;
   barcode: string;
-  originalLength: number;
-  currentLength: number;
+  originalWeight: number;
+  currentWeight: number;
   status: string;
   createdAt: Date;
 }

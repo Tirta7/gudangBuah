@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { salesTable, saleItemsTable, productsTable, productRollsTable, stockMutationsTable, cashEntriesTable, receivablesTable } from "@workspace/db";
+import { salesTable, saleItemsTable, productsTable, productBatchesTable, stockMutationsTable, cashEntriesTable, receivablesTable } from "@workspace/db";
 import { eq, sql, and } from "drizzle-orm";
 
 async function run() {
@@ -12,10 +12,10 @@ async function run() {
   const items = [
     {
       productId: 1, // assuming ROSE GOLD is id 1 or something
-      rollId: 1,
-      rolls: 1,
-      meters: 382.98,
-      pricePerMeter: 14000,
+      batchId: 1,
+      krats: 1,
+      kgs: 382.98,
+      pricePerKg: 14000,
       subtotal: 5361720
     }
   ];
@@ -42,23 +42,23 @@ async function run() {
       await db.insert(saleItemsTable).values({
         saleId: sale.id,
         productId: item.productId,
-        rollId: item.rollId ?? null,
-        rolls: item.rolls.toString(),
-        meters: item.meters.toString(),
-        pricePerMeter: item.pricePerMeter.toString(),
+        batchId: item.batchId ?? null,
+        krats: item.krats.toString(),
+        kgs: item.kgs.toString(),
+        pricePerKg: item.pricePerKg.toString(),
         subtotal: item.subtotal.toString(),
       });
       console.log("ITEM CREATED:", item.productId);
 
-      if (item.rollId) {
+      if (item.batchId) {
         await db.execute(sql`
-          UPDATE ${productRollsTable}
-          SET current_length = current_length - ${item.meters}, 
-              status = CASE WHEN current_length - ${item.meters} <= 0.01 THEN 'empty' ELSE 'available' END,
+          UPDATE ${productBatchesTable}
+          SET current_length = current_length - ${item.kgs}, 
+              status = CASE WHEN current_length - ${item.kgs} <= 0.01 THEN 'empty' ELSE 'available' END,
               updated_at = NOW()
-          WHERE id = ${item.rollId}
+          WHERE id = ${item.batchId}
         `);
-        console.log("ROLL DEDUCTED");
+        console.log("KRAT DEDUCTED");
       }
     }
   } catch (err) {

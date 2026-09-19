@@ -16,12 +16,12 @@ export interface ProductInput {
   rackLocation?: string;
   imageUrl?: string | null;
   description?: string | null;
-  costPricePerMeter?: number;
-  costPricePerRoll?: number;
-  pricePerMeter?: number;
-  pricePerRoll?: number;
-  rollStock?: number;
-  meterStock?: number;
+  costPricePerKg?: number;
+  costPricePerKrat?: number;
+  pricePerKg?: number;
+  pricePerKrat?: number;
+  kratStock?: number;
+  kgStock?: number;
   minStock?: number;
-  rollLengths?: number[];
+  batchWeights?: number[];
 }

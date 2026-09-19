@@ -298,7 +298,7 @@ export default function Home() {
       {/* Bottom Content Grid (Desktop) */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 px-4 md:px-8 pb-8">
         
-        {/* Horizontal Scroll Cards (Recent Sales) */}
+        {/* Horizontal scroll Cards (Recent Sales) */}
         <div>
           <div className="flex items-center justify-between pr-4 mb-3">
             <h3 className="font-bold text-slate-800 text-sm">Akses Cepat Transaksi</h3>

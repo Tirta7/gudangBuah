@@ -102,7 +102,7 @@ export function PurchaseDetailModal({ purchaseId, isOpen, onClose }: PurchaseDet
                   {/* Table Header */}
                   <div className="hidden md:grid grid-cols-12 gap-2 bg-slate-100 p-3 text-xs font-semibold text-slate-600">
                     <div className="col-span-5">NAMA BARANG</div>
-                    <div className="col-span-2 text-center">ROLL</div>
+                    <div className="col-span-2 text-center">KRAT</div>
                     <div className="col-span-2 text-right">QTY / YARD</div>
                     <div className="col-span-3 text-right">SUBTOTAL</div>
                   </div>
@@ -123,14 +123,14 @@ export function PurchaseDetailModal({ purchaseId, isOpen, onClose }: PurchaseDet
                           </div>
                           
                           <div className="col-span-4 md:col-span-2 flex flex-col md:items-center">
-                            <span className="text-[10px] text-slate-400 md:hidden uppercase font-semibold">Roll</span>
-                            <span className="font-semibold text-slate-700">{Number(item.rolls)}</span>
+                            <span className="text-[10px] text-slate-400 md:hidden uppercase font-semibold">Krat</span>
+                            <span className="font-semibold text-slate-700">{Number(item.krats)}</span>
                           </div>
                           
                           <div className="col-span-4 md:col-span-2 flex flex-col text-right">
                             <span className="text-[10px] text-slate-400 md:hidden uppercase font-semibold">Qty</span>
-                            <span className="font-semibold text-slate-700">{Number(item.meters)}</span>
-                            <span className="text-[10px] text-slate-500">@ {formatRupiah(item.pricePerMeter)}</span>
+                            <span className="font-semibold text-slate-700">{Number(item.kgs)}</span>
+                            <span className="text-[10px] text-slate-500">@ {formatRupiah(item.pricePerKg)}</span>
                           </div>
                           
                           <div className="col-span-4 md:col-span-3 flex flex-col text-right">
@@ -139,11 +139,11 @@ export function PurchaseDetailModal({ purchaseId, isOpen, onClose }: PurchaseDet
                           </div>
                         </div>
                         
-                        {item.rollLengths && item.rollLengths.length > 0 && (
+                        {item.batchWeights && item.batchWeights.length > 0 && (
                           <div className="mt-2 pt-2 border-t border-slate-100">
-                            <div className="text-[10px] text-slate-500 font-semibold mb-1 uppercase">Detail Roll</div>
+                            <div className="text-[10px] text-slate-500 font-semibold mb-1 uppercase">Detail Krat</div>
                             <div className="flex flex-wrap gap-1.5">
-                              {item.rollLengths.map((length: number, i: number) => (
+                              {item.batchWeights.map((length: number, i: number) => (
                                 <div key={i} className="text-[10px] bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-medium">
                                   R#{i + 1}: {length}
                                 </div>

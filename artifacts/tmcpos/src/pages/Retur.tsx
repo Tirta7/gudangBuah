@@ -18,7 +18,7 @@ import { formatRupiah, formatDate } from "@/lib/utils";
 import { DateRangeFilter, filterByDateRange } from "@/components/DateRangeFilter";
 import { ReturnInvoiceModal } from "@/components/ReturnInvoiceModal";
 
-type ReturnItemForm = { productId: number; productName: string; rolls: number | ""; meters: number | ""; pricePerMeter: number | ""; subtotal: number; };
+type ReturnItemForm = { productId: number; productName: string; krats: number | ""; kgs: number | ""; pricePerKg: number | ""; subtotal: number; };
 
 function ReturItemRow({ item, index, products, updateItem, removeItem, label }: any) {
   return (
@@ -31,7 +31,7 @@ function ReturItemRow({ item, index, products, updateItem, removeItem, label }: 
           onValueChange={(val: string) => {
             const p = products?.find((p: any) => p.id.toString() === val);
             if (p) {
-              updateItem(index, { productId: p.id, productName: p.name, pricePerMeter: p.pricePerMeter || 0 });
+              updateItem(index, { productId: p.id, productName: p.name, pricePerKg: p.pricePerKg || 0 });
             }
           }}
         >
@@ -49,16 +49,16 @@ function ReturItemRow({ item, index, products, updateItem, removeItem, label }: 
         </Select>
       </div>
       <div className="md:col-span-2">
-        <label className="text-xs font-semibold text-muted-foreground mb-1.5 block truncate">Jml (Roll)</label>
-        <Input type="number" value={item.rolls} onChange={(e) => updateItem(index, { rolls: e.target.value ? Number(e.target.value) : "" })} className="h-12 bg-white/80 dark:bg-slate-900/80 text-center font-medium" min="0" placeholder="0" />
+        <label className="text-xs font-semibold text-muted-foreground mb-1.5 block truncate">Jml (Krat)</label>
+        <Input type="number" value={item.krats} onChange={(e) => updateItem(index, { krats: e.target.value ? Number(e.target.value) : "" })} className="h-12 bg-white/80 dark:bg-slate-900/80 text-center font-medium" min="0" placeholder="0" />
       </div>
       <div className="md:col-span-2">
-        <label className="text-xs font-semibold text-muted-foreground mb-1.5 block truncate">Jml (Meter)</label>
-        <Input type="number" value={item.meters} onChange={(e) => updateItem(index, { meters: e.target.value ? Number(e.target.value) : "" })} className="h-12 bg-white/80 dark:bg-slate-900/80 text-center font-medium" min="0" step="0.1" placeholder="0" />
+        <label className="text-xs font-semibold text-muted-foreground mb-1.5 block truncate">Jml (Kg)</label>
+        <Input type="number" value={item.kgs} onChange={(e) => updateItem(index, { kgs: e.target.value ? Number(e.target.value) : "" })} className="h-12 bg-white/80 dark:bg-slate-900/80 text-center font-medium" min="0" step="0.1" placeholder="0" />
       </div>
       <div className="md:col-span-2">
         <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Harga/m</label>
-        <Input type="number" value={item.pricePerMeter} onChange={(e) => updateItem(index, { pricePerMeter: e.target.value ? Number(e.target.value) : "" })} className="h-12 bg-white/80 dark:bg-slate-900/80 font-medium" min="0" />
+        <Input type="number" value={item.pricePerKg} onChange={(e) => updateItem(index, { pricePerKg: e.target.value ? Number(e.target.value) : "" })} className="h-12 bg-white/80 dark:bg-slate-900/80 font-medium" min="0" />
       </div>
       <div className="md:col-span-2 flex items-center gap-2">
         <div className="flex-1">
@@ -120,9 +120,9 @@ export default function Retur() {
         setReturnedItems(saleQuery.data.items.map((i: any) => ({
           productId: i.productId,
           productName: i.productName || "",
-          rolls: Number(i.rolls) || "",
-          meters: Number(i.meters) || "",
-          pricePerMeter: Number(i.pricePerMeter) || 0,
+          krats: Number(i.krats) || "",
+          kgs: Number(i.kgs) || "",
+          pricePerKg: Number(i.pricePerKg) || 0,
           subtotal: Number(i.subtotal) || 0
         })));
       }
@@ -135,23 +135,23 @@ export default function Retur() {
         setReturnedItems(purchaseQuery.data.items.map((i: any) => ({
           productId: i.productId,
           productName: i.productName || "",
-          rolls: Number(i.rolls) || "",
-          meters: Number(i.meters) || "",
-          pricePerMeter: Number(i.pricePerMeter) || 0,
+          krats: Number(i.krats) || "",
+          kgs: Number(i.kgs) || "",
+          pricePerKg: Number(i.pricePerKg) || 0,
           subtotal: Number(i.subtotal) || 0
         })));
       }
     }
   }, [type, selectedInvoiceId, purchaseQuery.data]);
   
-  const addReturnedItem = () => setReturnedItems([...returnedItems, { productId: 0, productName: "", rolls: 0, meters: 0, pricePerMeter: 0, subtotal: 0 }]);
-  const addExchangedItem = () => setExchangedItems([...exchangedItems, { productId: 0, productName: "", rolls: 0, meters: 0, pricePerMeter: 0, subtotal: 0 }]);
+  const addReturnedItem = () => setReturnedItems([...returnedItems, { productId: 0, productName: "", krats: 0, kgs: 0, pricePerKg: 0, subtotal: 0 }]);
+  const addExchangedItem = () => setExchangedItems([...exchangedItems, { productId: 0, productName: "", krats: 0, kgs: 0, pricePerKg: 0, subtotal: 0 }]);
   
   const updateItem = (list: any[], setList: any) => (index: number, changes: Partial<ReturnItemForm>) => {
     const newList = [...list];
     newList[index] = { ...newList[index], ...changes };
     const it = newList[index];
-    it.subtotal = (Number(it.meters) || 0) * (Number(it.pricePerMeter) || 0); 
+    it.subtotal = (Number(it.kgs) || 0) * (Number(it.pricePerKg) || 0); 
     setList(newList);
   };
   const removeItem = (list: any[], setList: any) => (index: number) => {
@@ -208,7 +208,7 @@ export default function Retur() {
         </div>
       </div>
 
-      {/* Scrollable List (iOS Style Cards) */}
+      {/* scrollable List (iOS Style Cards) */}
       <div className="flex-1 overflow-auto min-h-0 pb-4">
         {isLoading ? (
           <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}</div>

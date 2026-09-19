@@ -13,9 +13,9 @@ export interface SaleItem {
   /** @nullable */
   productName?: string | null;
   /** @nullable */
-  rollId?: number | null;
-  rolls: number;
-  meters: number;
-  pricePerMeter: number;
+  batchId?: number | null;
+  krats: number;
+  kgs: number;
+  pricePerKg: number;
   subtotal: number;
 }

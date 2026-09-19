@@ -10,16 +10,16 @@ interface ShopProduct {
   description: string | null;
   primaryUnit: string;
   secondaryUnit: string;
-  pricePerMeter: number;
-  pricePerRoll: number | null;
-  rollStock: number;
-  meterStock: number;
+  pricePerKg: number;
+  pricePerKrat: number | null;
+  kratStock: number;
+  kgStock: number;
   inStock: boolean;
 }
 
 interface ShopProductDetail extends ShopProduct {
   availableSizes: { length: number; count: number }[];
-  totalRolls: number;
+  totalKrats: number;
 }
 
 export interface CartItem {
@@ -155,7 +155,7 @@ function BottomSheet({ product, onClose, onAddToCart, enableCart, whatsapp }: { 
     if (selectedSize === null) {
       customLength = parseFloat(customLengthStr);
       if (isNaN(customLength) || customLength <= 0) {
-        alert("Silakan masukkan jumlah yard/meter yang valid untuk Bebas Potong.");
+        alert("Silakan masukkan jumlah yard/kg yang valid untuk Bebas Potong.");
         return;
       }
     }
@@ -166,7 +166,7 @@ function BottomSheet({ product, onClose, onAddToCart, enableCart, whatsapp }: { 
       if (selectedSize === null) {
         msg += `${quantity}x ${product.name} (Bebas Potong - ${customLengthStr} ${product.primaryUnit})\n`;
       } else {
-        msg += `${quantity}x ${product.name} (Roll-an)\n`;
+        msg += `${quantity}x ${product.name} (Krat-an)\n`;
       }
       msg += `\nApakah stoknya masih tersedia?`;
       window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -243,7 +243,7 @@ function BottomSheet({ product, onClose, onAddToCart, enableCart, whatsapp }: { 
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-500">Harga Eceran</span>
                 <span className="text-xl font-bold text-rose-600">
-                  {formatRupiah(product.pricePerMeter)}
+                  {formatRupiah(product.pricePerKg)}
                   <span className="text-sm font-medium text-slate-400">/{product.primaryUnit}</span>
                 </span>
               </div>
@@ -254,24 +254,24 @@ function BottomSheet({ product, onClose, onAddToCart, enableCart, whatsapp }: { 
                     Total Eceran ({quantity > 1 ? `${quantity}x ` : ''}{customLengthStr} {product.primaryUnit})
                   </span>
                   <span className="text-base font-bold text-rose-600">
-                    {formatRupiah(product.pricePerMeter * parseFloat(customLengthStr) * quantity)}
+                    {formatRupiah(product.pricePerKg * parseFloat(customLengthStr) * quantity)}
                   </span>
                 </div>
               )}
 
-              {product.pricePerRoll && (
+              {product.pricePerKrat && (
                 <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 mt-1">
                   <span className="text-sm text-slate-500">
-                    {enableCart && selectedSize ? `Total ${quantity} Roll (${selectedSize} ${product.primaryUnit})` : "Harga Grosir (Beli Roll-an)"}
+                    {enableCart && selectedSize ? `Total ${quantity} Krat (${selectedSize} ${product.primaryUnit})` : "Harga Grosir (Beli Krat-an)"}
                   </span>
                   <div className="flex flex-col items-end">
                     <span className="text-base font-bold text-violet-600">
-                      {enableCart && selectedSize ? formatRupiah(product.pricePerRoll * selectedSize * quantity) : formatRupiah(product.pricePerRoll)}
+                      {enableCart && selectedSize ? formatRupiah(product.pricePerKrat * selectedSize * quantity) : formatRupiah(product.pricePerKrat)}
                       {(!enableCart || !selectedSize) && <span className="text-xs font-medium text-slate-400">/{product.primaryUnit}</span>}
                     </span>
                     {selectedSize && (
                       <span className="text-[10px] text-slate-400 font-medium">
-                        (Harga grosir {formatRupiah(product.pricePerRoll)}/{product.primaryUnit})
+                        (Harga grosir {formatRupiah(product.pricePerKrat)}/{product.primaryUnit})
                       </span>
                     )}
                   </div>
@@ -279,12 +279,12 @@ function BottomSheet({ product, onClose, onAddToCart, enableCart, whatsapp }: { 
               )}
             </div>
 
-            {/* Available Sizes (Roll lengths) */}
+            {/* Available Sizes (Krat lengths) */}
             {product.availableSizes.length > 0 && (
               <div>
                 <p className="text-sm font-semibold text-slate-700 mb-3">
                   Pilihan Pembelian
-                  <span className="ml-2 text-xs text-slate-400 font-normal">({product.totalRolls} roll)</span>
+                  <span className="ml-2 text-xs text-slate-400 font-normal">({product.totalKrats} krat)</span>
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -315,14 +315,14 @@ function BottomSheet({ product, onClose, onAddToCart, enableCart, whatsapp }: { 
                     ))
                   ) : (
                     <button
-                      onClick={() => setSelectedSize(1)} // dummy truthy value for "Roll-an"
+                      onClick={() => setSelectedSize(1)} // dummy truthy value for "Krat-an"
                       className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all ${
                         selectedSize !== null
                           ? "border-rose-500 bg-rose-50 text-rose-700"
                           : "border-slate-200 bg-white text-slate-700"
                       }`}
                     >
-                      Beli Roll-an
+                      Beli Krat-an
                     </button>
                   )}
                 </div>
@@ -358,7 +358,7 @@ function BottomSheet({ product, onClose, onAddToCart, enableCart, whatsapp }: { 
                 <div className={`w-2 h-2 rounded-full ${product.inStock ? "bg-emerald-400" : "bg-slate-300"}`} />
                 <span className="text-sm text-slate-500">
                   {product.inStock
-                    ? `${new Intl.NumberFormat('id-ID').format(product.rollStock)} roll tersedia`
+                    ? `${new Intl.NumberFormat('id-ID').format(product.kratStock)} krat tersedia`
                     : "Stok habis"}
                 </span>
               </div>
@@ -377,11 +377,11 @@ function BottomSheet({ product, onClose, onAddToCart, enableCart, whatsapp }: { 
                     <div className="w-10 text-center font-bold text-slate-700 text-sm">{quantity}</div>
                     <button 
                       onClick={() => {
-                        const maxQty = enableCart && selectedSize !== null ? (product.availableSizes.find(s => s.length === selectedSize)?.count ?? 1) : product.rollStock;
+                        const maxQty = enableCart && selectedSize !== null ? (product.availableSizes.find(s => s.length === selectedSize)?.count ?? 1) : product.kratStock;
                         setQuantity(q => Math.min(maxQty, q + 1));
                       }}
-                      disabled={(enableCart && selectedSize !== null) ? quantity >= (product.availableSizes.find(s => s.length === selectedSize)?.count ?? 1) : quantity >= product.rollStock}
-                      className={`w-8 h-8 flex items-center justify-center rounded-r-lg transition-colors ${((enableCart && selectedSize !== null) ? quantity >= (product.availableSizes.find(s => s.length === selectedSize)?.count ?? 1) : quantity >= product.rollStock) ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:bg-slate-200 active:scale-95"}`}
+                      disabled={(enableCart && selectedSize !== null) ? quantity >= (product.availableSizes.find(s => s.length === selectedSize)?.count ?? 1) : quantity >= product.kratStock}
+                      className={`w-8 h-8 flex items-center justify-center rounded-r-lg transition-colors ${((enableCart && selectedSize !== null) ? quantity >= (product.availableSizes.find(s => s.length === selectedSize)?.count ?? 1) : quantity >= product.kratStock) ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:bg-slate-200 active:scale-95"}`}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     </button>
@@ -465,7 +465,7 @@ function ProductCard({ product, onClick }: { product: ShopProduct; onClick: () =
         {product.inStock && (
           <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1">
             <span className="bg-black/40 text-white backdrop-blur-md text-[9px] font-bold px-2 py-0.5 rounded-full">
-              📦 {new Intl.NumberFormat('id-ID').format(product.rollStock)} Roll
+              📦 {new Intl.NumberFormat('id-ID').format(product.kratStock)} Krat
             </span>
           </div>
         )}
@@ -477,7 +477,7 @@ function ProductCard({ product, onClick }: { product: ShopProduct; onClick: () =
         <div>
           <h3 className="text-[14px] font-black text-slate-800 leading-snug line-clamp-2 group-hover:text-rose-600 transition-colors">{product.name}</h3>
           <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-            {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(product.meterStock)} {product.primaryUnit} tersedia
+            {new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(product.kgStock)} {product.primaryUnit} tersedia
           </p>
         </div>
 
@@ -485,7 +485,7 @@ function ProductCard({ product, onClick }: { product: ShopProduct; onClick: () =
         <div className="mt-auto flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100">
           <div>
             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Harga Grosir</p>
-            <p className="text-[14px] font-black text-rose-600 leading-tight">{formatRupiah(product.pricePerMeter)}<span className="text-[9px] font-bold text-slate-400 ml-0.5">/{product.primaryUnit}</span></p>
+            <p className="text-[14px] font-black text-rose-600 leading-tight">{formatRupiah(product.pricePerKg)}<span className="text-[9px] font-bold text-slate-400 ml-0.5">/{product.primaryUnit}</span></p>
           </div>
           <div className="shrink-0 px-3 py-1.5 rounded-xl bg-rose-500 text-white text-[10px] font-black uppercase tracking-wide group-hover:bg-rose-600 transition-colors shadow-sm shadow-rose-200 flex items-center gap-1">
             Lihat
@@ -521,10 +521,10 @@ function CartModal({
 
   const calculateItemPrice = (item: CartItem) => {
     if (item.size === null && item.customLength) {
-      return item.product.pricePerMeter * item.customLength;
+      return item.product.pricePerKg * item.customLength;
     }
-    if (item.size !== null && item.product.pricePerRoll) {
-      return item.product.pricePerRoll * item.size;
+    if (item.size !== null && item.product.pricePerKrat) {
+      return item.product.pricePerKrat * item.size;
     }
     return 0;
   };
@@ -539,10 +539,10 @@ function CartModal({
       
       if (item.size === null) {
         msg += `${index + 1}. ${item.product.name} (${item.qty}x Bebas Potong - ${item.customLength} ${item.product.primaryUnit})\n`;
-        msg += `   ${item.qty} x ${formatRupiah(item.product.pricePerMeter)} x ${item.customLength} = ${formatRupiah(totalItemPrice)}\n`;
+        msg += `   ${item.qty} x ${formatRupiah(item.product.pricePerKg)} x ${item.customLength} = ${formatRupiah(totalItemPrice)}\n`;
       } else {
-        msg += `${index + 1}. ${item.product.name} (${item.qty} Roll - ${item.size} ${item.product.primaryUnit})\n`;
-        msg += `   ${item.qty} x ${formatRupiah(item.product.pricePerRoll || 0)} x ${item.size} = ${formatRupiah(totalItemPrice)}\n`;
+        msg += `${index + 1}. ${item.product.name} (${item.qty} Krat - ${item.size} ${item.product.primaryUnit})\n`;
+        msg += `   ${item.qty} x ${formatRupiah(item.product.pricePerKrat || 0)} x ${item.size} = ${formatRupiah(totalItemPrice)}\n`;
       }
     });
     msg += `\nTotal Pesanan: ${formatRupiah(subtotal)}\nApakah stoknya masih tersedia?`;
@@ -575,7 +575,7 @@ function CartModal({
                     <button onClick={() => handleRemove(item.id)} className="text-red-400 hover:text-red-600 p-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                   </div>
                   <p className="text-xs text-slate-500 font-medium mt-1">
-                    {item.qty} x {item.size === null ? `Bebas Potong (${item.customLength} ${item.product.primaryUnit})` : `Roll (${item.size} ${item.product.primaryUnit})`}
+                    {item.qty} x {item.size === null ? `Bebas Potong (${item.customLength} ${item.product.primaryUnit})` : `Krat (${item.size} ${item.product.primaryUnit})`}
                   </p>
                   <p className="text-sm font-black text-rose-600 mt-1">{formatRupiah(calculateItemPrice(item) * item.qty)}</p>
                 </div>

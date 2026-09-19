@@ -229,9 +229,9 @@ export function ReturnInvoiceModal({ open, onOpenChange, returnId }: ReturnInvoi
                                   <div className="font-bold">{item.productName}</div>
                                 </td>
                                 <td style={{ textAlign: "right", padding: "8px", fontSize: "13px", borderBottom: "1px solid #eee" }}>
-                                  {Number(item.meters) > 0 ? `${Number(item.meters)} ${item.primaryUnit || 'M'}` : ""} {Number(item.rolls) > 0 ? `(${Number(item.rolls)} ${item.secondaryUnit || 'Roll'})` : ""}
+                                  {Number(item.kgs) > 0 ? `${Number(item.kgs)} ${item.primaryUnit || 'M'}` : ""} {Number(item.krats) > 0 ? `(${Number(item.krats)} ${item.secondaryUnit || 'Krat'})` : ""}
                                 </td>
-                                <td style={{ textAlign: "right", padding: "8px", fontSize: "13px", borderBottom: "1px solid #eee" }}>{formatRupiah(Number(item.pricePerMeter))}</td>
+                                <td style={{ textAlign: "right", padding: "8px", fontSize: "13px", borderBottom: "1px solid #eee" }}>{formatRupiah(Number(item.pricePerKg))}</td>
                                 <td style={{ textAlign: "right", padding: "8px", fontSize: "13px", borderBottom: "1px solid #eee", fontWeight: "bold" }}>{formatRupiah(Number(item.subtotal))}</td>
                               </tr>
                             ))}
@@ -267,9 +267,9 @@ export function ReturnInvoiceModal({ open, onOpenChange, returnId }: ReturnInvoi
                                 <div className="font-bold">{item.productName}</div>
                               </td>
                               <td style={{ textAlign: "right", padding: "8px", fontSize: "13px", borderBottom: "1px solid #eee" }}>
-                                {Number(item.meters) > 0 ? `${Number(item.meters)} ${item.primaryUnit || 'M'}` : ""} {Number(item.rolls) > 0 ? `(${Number(item.rolls)} ${item.secondaryUnit || 'Roll'})` : ""}
+                                {Number(item.kgs) > 0 ? `${Number(item.kgs)} ${item.primaryUnit || 'M'}` : ""} {Number(item.krats) > 0 ? `(${Number(item.krats)} ${item.secondaryUnit || 'Krat'})` : ""}
                               </td>
-                              <td style={{ textAlign: "right", padding: "8px", fontSize: "13px", borderBottom: "1px solid #eee" }}>{formatRupiah(Number(item.pricePerMeter))}</td>
+                              <td style={{ textAlign: "right", padding: "8px", fontSize: "13px", borderBottom: "1px solid #eee" }}>{formatRupiah(Number(item.pricePerKg))}</td>
                               <td style={{ textAlign: "right", padding: "8px", fontSize: "13px", borderBottom: "1px solid #eee", fontWeight: "bold" }}>{formatRupiah(Number(item.subtotal))}</td>
                             </tr>
                           ))}

@@ -67,8 +67,8 @@ export const GetDashboardRecentTransactionsResponse = zod.array(GetDashboardRece
 export const GetDashboardTopProductsResponseItem = zod.object({
   "productId": zod.number(),
   "productName": zod.string(),
-  "totalRolls": zod.number(),
-  "totalMeters": zod.number(),
+  "totalKrats": zod.number(),
+  "totalKgs": zod.number(),
   "totalRevenue": zod.number()
 })
 export const GetDashboardTopProductsResponse = zod.array(GetDashboardTopProductsResponseItem)
@@ -182,10 +182,10 @@ export const ListProductsResponseItem = zod.object({
   "rackLocation": zod.string(),
   "imageUrl": zod.string().nullish(),
   "description": zod.string().nullish(),
-  "pricePerMeter": zod.number(),
-  "pricePerRoll": zod.number().nullable(),
-  "rollStock": zod.number(),
-  "meterStock": zod.number(),
+  "pricePerKg": zod.number(),
+  "pricePerKrat": zod.number().nullable(),
+  "kratStock": zod.number(),
+  "kgStock": zod.number(),
   "minStock": zod.number(),
   "isLowStock": zod.boolean().optional(),
   "createdAt": zod.string()
@@ -206,14 +206,14 @@ export const CreateProductBody = zod.object({
   "rackLocation": zod.string().optional(),
   "imageUrl": zod.string().nullish(),
   "description": zod.string().nullish(),
-  "costPricePerMeter": zod.number().optional(),
-  "costPricePerRoll": zod.number().optional(),
-  "pricePerMeter": zod.number().optional(),
-  "pricePerRoll": zod.number().optional(),
-  "rollStock": zod.number().optional(),
-  "meterStock": zod.number().optional(),
+  "costPricePerKg": zod.number().optional(),
+  "costPricePerKrat": zod.number().optional(),
+  "pricePerKg": zod.number().optional(),
+  "pricePerKrat": zod.number().optional(),
+  "kratStock": zod.number().optional(),
+  "kgStock": zod.number().optional(),
   "minStock": zod.number().optional(),
-  "rollLengths": zod.array(zod.number()).optional()
+  "batchWeights": zod.array(zod.number()).optional()
 })
 
 export const CreateProductResponse = zod.object({
@@ -228,10 +228,10 @@ export const CreateProductResponse = zod.object({
   "rackLocation": zod.string(),
   "imageUrl": zod.string().nullish(),
   "description": zod.string().nullish(),
-  "pricePerMeter": zod.number(),
-  "pricePerRoll": zod.number().nullable(),
-  "rollStock": zod.number(),
-  "meterStock": zod.number(),
+  "pricePerKg": zod.number(),
+  "pricePerKrat": zod.number().nullable(),
+  "kratStock": zod.number(),
+  "kgStock": zod.number(),
   "minStock": zod.number(),
   "isLowStock": zod.boolean().optional(),
   "createdAt": zod.string()
@@ -239,82 +239,82 @@ export const CreateProductResponse = zod.object({
 
 
 /**
- * @summary Get rolls for a product
+ * @summary Get krats for a product
  */
-export const GetProductRollsParams = zod.object({
+export const GetProductBatchsParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const GetProductRollsResponseItem = zod.object({
+export const GetProductBatchsResponseItem = zod.object({
   "id": zod.number(),
   "productId": zod.number(),
   "barcode": zod.string(),
-  "originalLength": zod.number(),
-  "currentLength": zod.number(),
+  "originalWeight": zod.number(),
+  "currentWeight": zod.number(),
   "status": zod.string(),
   "createdAt": zod.coerce.date()
 })
-export const GetProductRollsResponse = zod.array(GetProductRollsResponseItem)
+export const GetProductBatchsResponse = zod.array(GetProductBatchsResponseItem)
 
 
 /**
- * @summary Manually create a roll for a product
+ * @summary Manually create a krat for a product
  */
-export const CreateProductRollParams = zod.object({
+export const CreateProductBatchParams = zod.object({
   "id": zod.coerce.number()
 })
 
-export const CreateProductRollBody = zod.object({
+export const CreateProductBatchBody = zod.object({
   "barcode": zod.string().optional(),
-  "originalLength": zod.number(),
-  "currentLength": zod.number()
+  "originalWeight": zod.number(),
+  "currentWeight": zod.number()
 })
 
-export const CreateProductRollResponse = zod.object({
+export const CreateProductBatchResponse = zod.object({
   "id": zod.number(),
   "productId": zod.number(),
   "barcode": zod.string(),
-  "originalLength": zod.number(),
-  "currentLength": zod.number(),
+  "originalWeight": zod.number(),
+  "currentWeight": zod.number(),
   "status": zod.string(),
   "createdAt": zod.coerce.date()
 })
 
 
 /**
- * @summary Update a product roll
+ * @summary Update a product krat
  */
-export const UpdateProductRollParams = zod.object({
+export const UpdateProductBatchParams = zod.object({
   "id": zod.coerce.number(),
-  "rollId": zod.coerce.number()
+  "batchId": zod.coerce.number()
 })
 
-export const UpdateProductRollBody = zod.object({
+export const UpdateProductBatchBody = zod.object({
   "barcode": zod.string().optional(),
-  "originalLength": zod.number().optional(),
-  "currentLength": zod.number().optional()
+  "originalWeight": zod.number().optional(),
+  "currentWeight": zod.number().optional()
 })
 
-export const UpdateProductRollResponse = zod.object({
+export const UpdateProductBatchResponse = zod.object({
   "id": zod.number(),
   "productId": zod.number(),
   "barcode": zod.string(),
-  "originalLength": zod.number(),
-  "currentLength": zod.number(),
+  "originalWeight": zod.number(),
+  "currentWeight": zod.number(),
   "status": zod.string(),
   "createdAt": zod.coerce.date()
 })
 
 
 /**
- * @summary Delete a product roll
+ * @summary Delete a product krat
  */
-export const DeleteProductRollParams = zod.object({
+export const DeleteProductBatchParams = zod.object({
   "id": zod.coerce.number(),
-  "rollId": zod.coerce.number()
+  "batchId": zod.coerce.number()
 })
 
-export const DeleteProductRollResponse = zod.void()
+export const DeleteProductBatchResponse = zod.void()
 
 
 /**
@@ -336,10 +336,10 @@ export const GetProductResponse = zod.object({
   "rackLocation": zod.string(),
   "imageUrl": zod.string().nullish(),
   "description": zod.string().nullish(),
-  "pricePerMeter": zod.number(),
-  "pricePerRoll": zod.number().nullable(),
-  "rollStock": zod.number(),
-  "meterStock": zod.number(),
+  "pricePerKg": zod.number(),
+  "pricePerKrat": zod.number().nullable(),
+  "kratStock": zod.number(),
+  "kgStock": zod.number(),
   "minStock": zod.number(),
   "isLowStock": zod.boolean().optional(),
   "createdAt": zod.string()
@@ -363,14 +363,14 @@ export const UpdateProductBody = zod.object({
   "rackLocation": zod.string().optional(),
   "imageUrl": zod.string().nullish(),
   "description": zod.string().nullish(),
-  "costPricePerMeter": zod.number().optional(),
-  "costPricePerRoll": zod.number().optional(),
-  "pricePerMeter": zod.number().optional(),
-  "pricePerRoll": zod.number().optional(),
+  "costPricePerKg": zod.number().optional(),
+  "costPricePerKrat": zod.number().optional(),
+  "pricePerKg": zod.number().optional(),
+  "pricePerKrat": zod.number().optional(),
   "minStock": zod.number().optional(),
-  "rollStock": zod.number().optional(),
-  "meterStock": zod.number().optional(),
-  "rollLengths": zod.array(zod.number()).optional()
+  "kratStock": zod.number().optional(),
+  "kgStock": zod.number().optional(),
+  "batchWeights": zod.array(zod.number()).optional()
 })
 
 export const UpdateProductResponse = zod.object({
@@ -385,10 +385,10 @@ export const UpdateProductResponse = zod.object({
   "rackLocation": zod.string(),
   "imageUrl": zod.string().nullish(),
   "description": zod.string().nullish(),
-  "pricePerMeter": zod.number(),
-  "pricePerRoll": zod.number().nullable(),
-  "rollStock": zod.number(),
-  "meterStock": zod.number(),
+  "pricePerKg": zod.number(),
+  "pricePerKrat": zod.number().nullable(),
+  "kratStock": zod.number(),
+  "kgStock": zod.number(),
   "minStock": zod.number(),
   "isLowStock": zod.boolean().optional(),
   "createdAt": zod.string()
@@ -652,10 +652,10 @@ export const CreateSaleBody = zod.object({
   "dpAmount": zod.number().optional(),
   "items": zod.array(zod.object({
   "productId": zod.number(),
-  "rollId": zod.number().optional(),
-  "rolls": zod.number(),
-  "meters": zod.number(),
-  "pricePerMeter": zod.number(),
+  "batchId": zod.number().optional(),
+  "krats": zod.number(),
+  "kgs": zod.number(),
+  "pricePerKg": zod.number(),
   "subtotal": zod.number()
 }))
 })
@@ -701,10 +701,10 @@ export const GetSaleResponse = zod.object({
   "saleId": zod.number(),
   "productId": zod.number(),
   "productName": zod.string().nullish(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.number(),
-  "meters": zod.number(),
-  "pricePerMeter": zod.number(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.number(),
+  "kgs": zod.number(),
+  "pricePerKg": zod.number(),
   "subtotal": zod.number()
 }))
 })
@@ -727,10 +727,10 @@ export const UpdateSaleBody = zod.object({
   "dpAmount": zod.number().optional(),
   "items": zod.array(zod.object({
   "productId": zod.number(),
-  "rollId": zod.number().optional(),
-  "rolls": zod.number(),
-  "meters": zod.number(),
-  "pricePerMeter": zod.number(),
+  "batchId": zod.number().optional(),
+  "krats": zod.number(),
+  "kgs": zod.number(),
+  "pricePerKg": zod.number(),
   "subtotal": zod.number()
 }))
 })
@@ -837,13 +837,13 @@ export const CreatePurchaseBody = zod.object({
   "notes": zod.string().optional(),
   "items": zod.array(zod.object({
   "productId": zod.number(),
-  "rollId": zod.number().optional(),
-  "rolls": zod.number(),
-  "meters": zod.number(),
-  "pricePerMeter": zod.number(),
+  "batchId": zod.number().optional(),
+  "krats": zod.number(),
+  "kgs": zod.number(),
+  "pricePerKg": zod.number(),
   "subtotal": zod.number(),
   "barcode": zod.string().optional(),
-  "rollLengths": zod.array(zod.number()).optional()
+  "batchWeights": zod.array(zod.number()).optional()
 }))
 })
 
@@ -888,12 +888,12 @@ export const GetPurchaseResponse = zod.object({
   "purchaseId": zod.number(),
   "productId": zod.number(),
   "productName": zod.string().nullish(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.number(),
-  "meters": zod.number(),
-  "pricePerMeter": zod.number(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.number(),
+  "kgs": zod.number(),
+  "pricePerKg": zod.number(),
   "subtotal": zod.number(),
-  "rollLengths": zod.array(zod.number()).optional()
+  "batchWeights": zod.array(zod.number()).optional()
 }))
 })
 
@@ -911,8 +911,8 @@ export const ListMutationsResponseItem = zod.object({
   "productId": zod.number(),
   "productName": zod.string().nullish(),
   "type": zod.string(),
-  "rolls": zod.number(),
-  "meters": zod.number(),
+  "krats": zod.number(),
+  "kgs": zod.number(),
   "description": zod.string(),
   "reference": zod.string().nullish(),
   "createdAt": zod.string()
@@ -926,8 +926,8 @@ export const ListMutationsResponse = zod.array(ListMutationsResponseItem)
 export const CreateMutationBody = zod.object({
   "productId": zod.number(),
   "type": zod.string(),
-  "rolls": zod.number(),
-  "meters": zod.number(),
+  "krats": zod.number(),
+  "kgs": zod.number(),
   "description": zod.string(),
   "reference": zod.string().optional()
 })
@@ -937,8 +937,8 @@ export const CreateMutationResponse = zod.object({
   "productId": zod.number(),
   "productName": zod.string().nullish(),
   "type": zod.string(),
-  "rolls": zod.number(),
-  "meters": zod.number(),
+  "krats": zod.number(),
+  "kgs": zod.number(),
   "description": zod.string(),
   "reference": zod.string().nullish(),
   "createdAt": zod.string()
@@ -1138,8 +1138,8 @@ export const GetSalesSummaryReportResponse = zod.object({
   "totalReturnExchanged": zod.number(),
   "netReturnImpact": zod.number(),
   "totalTransactions": zod.number(),
-  "totalRolls": zod.number(),
-  "totalMeters": zod.number(),
+  "totalKrats": zod.number(),
+  "totalKgs": zod.number(),
   "cashRevenue": zod.number(),
   "tempoRevenue": zod.number()
 })
@@ -1153,8 +1153,8 @@ export const GetStockSummaryReportResponseItem = zod.object({
   "productName": zod.string(),
   "categoryName": zod.string().nullable(),
   "rackLocation": zod.string().optional(),
-  "rollStock": zod.number(),
-  "meterStock": zod.number(),
+  "kratStock": zod.number(),
+  "kgStock": zod.number(),
   "value": zod.number(),
   "isLowStock": zod.boolean().optional()
 })
@@ -1379,10 +1379,10 @@ export const ListReturnsResponseItem = zod.object({
   "returnId": zod.number().optional(),
   "productId": zod.number().optional(),
   "productName": zod.string().optional(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.string().optional(),
-  "meters": zod.string().optional(),
-  "pricePerMeter": zod.string().optional(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.string().optional(),
+  "kgs": zod.string().optional(),
+  "pricePerKg": zod.string().optional(),
   "subtotal": zod.string().optional()
 })).optional(),
   "exchangedItems": zod.array(zod.object({
@@ -1390,10 +1390,10 @@ export const ListReturnsResponseItem = zod.object({
   "returnId": zod.number().optional(),
   "productId": zod.number().optional(),
   "productName": zod.string().optional(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.string().optional(),
-  "meters": zod.string().optional(),
-  "pricePerMeter": zod.string().optional(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.string().optional(),
+  "kgs": zod.string().optional(),
+  "pricePerKg": zod.string().optional(),
   "subtotal": zod.string().optional()
 })).optional()
 })
@@ -1414,18 +1414,18 @@ export const CreateReturnBody = zod.object({
   "notes": zod.string().nullish(),
   "returnedItems": zod.array(zod.object({
   "productId": zod.number(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.number(),
-  "meters": zod.number(),
-  "pricePerMeter": zod.number(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.number(),
+  "kgs": zod.number(),
+  "pricePerKg": zod.number(),
   "subtotal": zod.number()
 })).optional(),
   "exchangedItems": zod.array(zod.object({
   "productId": zod.number(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.number(),
-  "meters": zod.number(),
-  "pricePerMeter": zod.number(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.number(),
+  "kgs": zod.number(),
+  "pricePerKg": zod.number(),
   "subtotal": zod.number()
 })).optional()
 })
@@ -1453,10 +1453,10 @@ export const CreateReturnResponse = zod.object({
   "returnId": zod.number().optional(),
   "productId": zod.number().optional(),
   "productName": zod.string().optional(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.string().optional(),
-  "meters": zod.string().optional(),
-  "pricePerMeter": zod.string().optional(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.string().optional(),
+  "kgs": zod.string().optional(),
+  "pricePerKg": zod.string().optional(),
   "subtotal": zod.string().optional()
 })).optional(),
   "exchangedItems": zod.array(zod.object({
@@ -1464,10 +1464,10 @@ export const CreateReturnResponse = zod.object({
   "returnId": zod.number().optional(),
   "productId": zod.number().optional(),
   "productName": zod.string().optional(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.string().optional(),
-  "meters": zod.string().optional(),
-  "pricePerMeter": zod.string().optional(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.string().optional(),
+  "kgs": zod.string().optional(),
+  "pricePerKg": zod.string().optional(),
   "subtotal": zod.string().optional()
 })).optional()
 })
@@ -1503,10 +1503,10 @@ export const GetReturnResponse = zod.object({
   "returnId": zod.number().optional(),
   "productId": zod.number().optional(),
   "productName": zod.string().optional(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.string().optional(),
-  "meters": zod.string().optional(),
-  "pricePerMeter": zod.string().optional(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.string().optional(),
+  "kgs": zod.string().optional(),
+  "pricePerKg": zod.string().optional(),
   "subtotal": zod.string().optional()
 })).optional(),
   "exchangedItems": zod.array(zod.object({
@@ -1514,10 +1514,10 @@ export const GetReturnResponse = zod.object({
   "returnId": zod.number().optional(),
   "productId": zod.number().optional(),
   "productName": zod.string().optional(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.string().optional(),
-  "meters": zod.string().optional(),
-  "pricePerMeter": zod.string().optional(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.string().optional(),
+  "kgs": zod.string().optional(),
+  "pricePerKg": zod.string().optional(),
   "subtotal": zod.string().optional()
 })).optional()
 }).and(zod.object({
@@ -1526,10 +1526,10 @@ export const GetReturnResponse = zod.object({
   "returnId": zod.number().optional(),
   "productId": zod.number().optional(),
   "productName": zod.string().optional(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.string().optional(),
-  "meters": zod.string().optional(),
-  "pricePerMeter": zod.string().optional(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.string().optional(),
+  "kgs": zod.string().optional(),
+  "pricePerKg": zod.string().optional(),
   "subtotal": zod.string().optional()
 })).optional(),
   "exchangedItems": zod.array(zod.object({
@@ -1537,10 +1537,10 @@ export const GetReturnResponse = zod.object({
   "returnId": zod.number().optional(),
   "productId": zod.number().optional(),
   "productName": zod.string().optional(),
-  "rollId": zod.number().nullish(),
-  "rolls": zod.string().optional(),
-  "meters": zod.string().optional(),
-  "pricePerMeter": zod.string().optional(),
+  "batchId": zod.number().nullish(),
+  "krats": zod.string().optional(),
+  "kgs": zod.string().optional(),
+  "pricePerKg": zod.string().optional(),
   "subtotal": zod.string().optional()
 })).optional()
 }))

@@ -21,11 +21,11 @@ export interface Product {
   imageUrl?: string | null;
   /** @nullable */
   description?: string | null;
-  pricePerMeter: number;
+  pricePerKg: number;
   /** @nullable */
-  pricePerRoll: number | null;
-  rollStock: number;
-  meterStock: number;
+  pricePerKrat: number | null;
+  kratStock: number;
+  kgStock: number;
   minStock: number;
   isLowStock?: boolean;
   createdAt: string;

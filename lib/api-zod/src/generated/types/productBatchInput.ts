@@ -6,8 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ProductRollUpdateInput {
+export interface ProductBatchInput {
   barcode?: string;
-  originalLength?: number;
-  currentLength?: number;
+  originalWeight: number;
+  currentWeight: number;
 }

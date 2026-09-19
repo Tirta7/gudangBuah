@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { suppliersTable, payablesTable, paymentsTable, purchasesTable, purchaseItemsTable, productRollsTable, productsTable, stockMutationsTable } from "@workspace/db";
+import { suppliersTable, payablesTable, paymentsTable, purchasesTable, purchaseItemsTable, productBatchesTable, productsTable, stockMutationsTable } from "@workspace/db";
 import { eq, ilike, sql, and, inArray } from "drizzle-orm";
 import { CreateSupplierBody, UpdateSupplierBody } from "@workspace/api-zod";
 import { broadcastRefresh } from "../lib/websocket";
@@ -63,16 +63,16 @@ router.delete("/suppliers/:id", async (req, res): Promise<void> => {
       // 2. Get purchase items
       const items = await db.select().from(purchaseItemsTable).where(eq(purchaseItemsTable.purchaseId, purchase.id));
 
-      // 3. Sync stock back (remove rolls created by these purchases)
+      // 3. Sync stock back (remove krats created by these purchases)
       for (const item of items) {
-        const rollCount = Number(item.rolls) || 0;
-        if (rollCount > 0 && item.rollId) {
-          const rollIds = Array.from({ length: rollCount }, (_, i) => (item.rollId as number) + i);
-          const rollsToDelete = await db.select().from(productRollsTable).where(
-            and(eq(productRollsTable.productId, item.productId), inArray(productRollsTable.id, rollIds))
+        const kratCount = Number(item.krats) || 0;
+        if (kratCount > 0 && item.batchId) {
+          const batchIds = Array.from({ length: kratCount }, (_, i) => (item.batchId as number) + i);
+          const kratsToDelete = await db.select().from(productBatchesTable).where(
+            and(eq(productBatchesTable.productId, item.productId), inArray(productBatchesTable.id, batchIds))
           );
-          if (rollsToDelete.length > 0) {
-            await db.delete(productRollsTable).where(inArray(productRollsTable.id, rollsToDelete.map(r => r.id)));
+          if (kratsToDelete.length > 0) {
+            await db.delete(productBatchesTable).where(inArray(productBatchesTable.id, kratsToDelete.map(r => r.id)));
           }
         }
       }

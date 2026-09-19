@@ -12,8 +12,8 @@ export interface StockMutation {
   /** @nullable */
   productName?: string | null;
   type: string;
-  rolls: number;
-  meters: number;
+  krats: number;
+  kgs: number;
   description: string;
   /** @nullable */
   reference?: string | null;

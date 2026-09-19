@@ -191,7 +191,7 @@ export default function Dashboard() {
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">{product.productName}</div>
                       <div className="text-xs text-muted-foreground">
-                        {product.totalRolls} roll · {product.totalMeters} m
+                        {product.totalKrats} krat · {product.totalKgs} m
                       </div>
                     </div>
                     <div className="text-sm font-bold text-right shrink-0">

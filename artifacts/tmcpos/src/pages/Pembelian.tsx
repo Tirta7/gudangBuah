@@ -23,7 +23,7 @@ import { DateRangeFilter, filterByDateRange } from "@/components/DateRangeFilter
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRef } from "react";
 
-type PurchaseItem = { categoryId?: number; productId: number; productName: string; rolls: number | ""; meters: number | ""; pricePerMeter: number | ""; subtotal: number; primaryUnit?: string; secondaryUnit?: string; barcode?: string; rollLengths?: number[]; };
+type PurchaseItem = { categoryId?: number; productId: number; productName: string; krats: number | ""; kgs: number | ""; pricePerKg: number | ""; subtotal: number; primaryUnit?: string; secondaryUnit?: string; barcode?: string; batchWeights?: number[]; };
 
 const STATUS_COLORS: Record<string, string> = {
   lunas: "bg-green-100 text-green-700 border-green-200",
@@ -159,14 +159,14 @@ export default function Pembelian() {
           categoryId: i.categoryId || undefined,
           productId: i.productId,
           productName: i.productName || "",
-          rolls: Number(i.rolls) || 0,
-          meters: Number(i.meters) || 0,
-          pricePerMeter: Number(i.pricePerMeter) || 0,
+          krats: Number(i.krats) || 0,
+          kgs: Number(i.kgs) || 0,
+          pricePerKg: Number(i.pricePerKg) || 0,
           subtotal: Number(i.subtotal) || 0,
           primaryUnit: i.primaryUnit || undefined,
           secondaryUnit: i.secondaryUnit || undefined,
           barcode: i.barcode || "",
-          rollLengths: Array.isArray(i.rollLengths) ? i.rollLengths : [],
+          batchWeights: Array.isArray(i.batchWeights) ? i.batchWeights : [],
         }));
         setItems(restoredItems);
 
@@ -222,33 +222,33 @@ export default function Pembelian() {
     } catch {}
   }, [isOpen, isRestoring, hasDraftRestored]);
 
-  const addItem = () => setItems(prev => [...prev, { categoryId: undefined, productId: 0, productName: "", rolls: "", meters: "", pricePerMeter: "", subtotal: 0, barcode: "", rollLengths: [] }]);
+  const addItem = () => setItems(prev => [...prev, { categoryId: undefined, productId: 0, productName: "", krats: "", kgs: "", pricePerKg: "", subtotal: 0, barcode: "", batchWeights: [] }]);
   const removeItem = (index: number) => setItems(prev => prev.filter((_, i) => i !== index));
 
-  const removeRollLength = (itemIndex: number, rollIndex: number) => {
+  const removeKratLength = (itemIndex: number, kratIndex: number) => {
     setItems(prev => {
       const updated = [...prev];
-      if (updated[itemIndex].rollLengths && updated[itemIndex].rollLengths!.length > rollIndex) {
-        updated[itemIndex].rollLengths!.splice(rollIndex, 1);
-        updated[itemIndex].rolls = updated[itemIndex].rollLengths!.length;
-        updated[itemIndex].meters = parseFloat(updated[itemIndex].rollLengths!.reduce((a: number, b: any) => a + (parseFloat(String(b).replace(',', '.')) || 0), 0).toFixed(3));
+      if (updated[itemIndex].batchWeights && updated[itemIndex].batchWeights!.length > kratIndex) {
+        updated[itemIndex].batchWeights!.splice(kratIndex, 1);
+        updated[itemIndex].krats = updated[itemIndex].batchWeights!.length;
+        updated[itemIndex].kgs = parseFloat(updated[itemIndex].batchWeights!.reduce((a: number, b: any) => a + (parseFloat(String(b).replace(',', '.')) || 0), 0).toFixed(3));
         const item = updated[itemIndex];
-        updated[itemIndex].subtotal = Math.round((typeof item.meters === "number" ? item.meters : 0) * (typeof item.pricePerMeter === "number" ? item.pricePerMeter : 0));
+        updated[itemIndex].subtotal = Math.round((typeof item.kgs === "number" ? item.kgs : 0) * (typeof item.pricePerKg === "number" ? item.pricePerKg : 0));
       }
       return updated;
     });
   };
 
-  const updateItem = (index: number, field: keyof PurchaseItem | `rollLengths.${number}`, value: any) => {
+  const updateItem = (index: number, field: keyof PurchaseItem | `batchWeights.${number}`, value: any) => {
     setItems(prev => {
       const updated = [...prev];
       
-      if (typeof field === 'string' && field.startsWith('rollLengths.')) {
+      if (typeof field === 'string' && field.startsWith('batchWeights.')) {
         const lengthIndex = parseInt(field.split('.')[1]);
-        if (!updated[index].rollLengths) updated[index].rollLengths = [];
-        updated[index].rollLengths![lengthIndex] = value;
-        // Auto calculate meters from rollLengths
-        updated[index].meters = parseFloat(updated[index].rollLengths!.reduce((a: number, b: any) => a + (parseFloat(String(b).replace(',', '.')) || 0), 0).toFixed(3));
+        if (!updated[index].batchWeights) updated[index].batchWeights = [];
+        updated[index].batchWeights![lengthIndex] = value;
+        // Auto calculate kgs from batchWeights
+        updated[index].kgs = parseFloat(updated[index].batchWeights!.reduce((a: number, b: any) => a + (parseFloat(String(b).replace(',', '.')) || 0), 0).toFixed(3));
       } else {
         (updated[index] as any)[field] = value;
       }
@@ -257,22 +257,22 @@ export default function Pembelian() {
         const prod = products?.find(p => p.id === parseInt(value));
         if (prod) { 
           updated[index].productName = prod.name; 
-          updated[index].pricePerMeter = (prod as any).costPricePerMeter ?? (prod as any).pricePerMeter ?? 0;
+          updated[index].pricePerKg = (prod as any).costPricePerKg ?? (prod as any).pricePerKg ?? 0;
           updated[index].primaryUnit = prod.primaryUnit;
           updated[index].secondaryUnit = prod.secondaryUnit;
         }
       }
       
-      if (field === "rolls") {
+      if (field === "krats") {
         const val = parseInt(value) || 0;
-        const currentLengths = updated[index].rollLengths || [];
-        const newLengths = Array.from({ length: val }, (_, i) => currentLengths[i] || "");
-        updated[index].rollLengths = newLengths as number[];
-        updated[index].meters = parseFloat((newLengths as any[]).reduce((a: number, b: any) => a + (parseFloat(String(b).replace(',', '.')) || 0), 0).toFixed(3));
+        const currentWeights = updated[index].batchWeights || [];
+        const newLengths = Array.from({ length: val }, (_, i) => currentWeights[i] || "");
+        updated[index].batchWeights = newLengths as number[];
+        updated[index].kgs = parseFloat((newLengths as any[]).reduce((a: number, b: any) => a + (parseFloat(String(b).replace(',', '.')) || 0), 0).toFixed(3));
       }
       
       const item = updated[index];
-      updated[index].subtotal = Math.round((typeof item.meters === "number" ? item.meters : 0) * (typeof item.pricePerMeter === "number" ? item.pricePerMeter : 0));
+      updated[index].subtotal = Math.round((typeof item.kgs === "number" ? item.kgs : 0) * (typeof item.pricePerKg === "number" ? item.pricePerKg : 0));
       return updated;
     });
   };
@@ -281,7 +281,7 @@ export default function Pembelian() {
 
   const handleSubmit = useCallback(async () => {
     if (items.length === 0) { toast({ title: "Tambahkan minimal 1 item", variant: "destructive" }); return; }
-    if (items.some(i => !i.productId || (typeof i.meters === "number" ? i.meters : 0) <= 0)) { toast({ title: "Mohon lengkapi data barang", variant: "destructive" }); return; }
+    if (items.some(i => !i.productId || (typeof i.kgs === "number" ? i.kgs : 0) <= 0)) { toast({ title: "Mohon lengkapi data barang", variant: "destructive" }); return; }
     if (!supplierId) { toast({ title: "Pilih supplier", variant: "destructive" }); return; }
 
     // Selalu fetch daftar invoice terbaru langsung dari server
@@ -318,12 +318,12 @@ export default function Pembelian() {
         notes: notes || undefined,
         items: items.map(i => ({ 
           productId: i.productId, 
-          rolls: typeof i.rolls === "number" ? i.rolls : 0, 
-          meters: typeof i.meters === "number" ? i.meters : 0, 
-          pricePerMeter: typeof i.pricePerMeter === "number" ? i.pricePerMeter : 0, 
+          krats: typeof i.krats === "number" ? i.krats : 0, 
+          kgs: typeof i.kgs === "number" ? i.kgs : 0, 
+          pricePerKg: typeof i.pricePerKg === "number" ? i.pricePerKg : 0, 
           subtotal: i.subtotal, 
           barcode: i.barcode || undefined,
-          rollLengths: i.rollLengths || undefined
+          batchWeights: i.batchWeights || undefined
         }))
       }
     });
@@ -418,7 +418,7 @@ export default function Pembelian() {
         </div>
       </div>
 
-      {/* Scrollable Table */}
+      {/* scrollable Table */}
       <div className="flex-1 overflow-auto min-h-0">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           {isLoading ? (
@@ -467,7 +467,7 @@ export default function Pembelian() {
                               className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center transition-colors disabled:opacity-50" 
                               title="Hapus Pembelian" 
                               onClick={() => {
-                                if (confirm("Apakah Anda yakin ingin menghapus pembelian ini? Semua roll yang ditambahkan akan ditarik kembali dari stok.")) {
+                                if (confirm("Apakah Anda yakin ingin menghapus pembelian ini? Semua krat yang ditambahkan akan ditarik kembali dari stok.")) {
                                   deleteMutation.mutate(p.id);
                                 }
                               }}
@@ -605,16 +605,16 @@ export default function Pembelian() {
                       <Input className="h-8 px-2 bg-slate-100 cursor-not-allowed" placeholder="Otomatis" value={item.barcode || ""} readOnly />
                     </div>
                     <div className="md:col-span-1">
-                      <label className="text-xs text-muted-foreground mb-1 block truncate">Roll</label>
-                      <Input className="h-8 px-2" type="number" step="1" min={0} value={item.rolls} onChange={e => updateItem(index, "rolls", e.target.value === "" ? "" : parseFloat(e.target.value))} />
+                      <label className="text-xs text-muted-foreground mb-1 block truncate">Krat</label>
+                      <Input className="h-8 px-2" type="number" step="1" min={0} value={item.krats} onChange={e => updateItem(index, "krats", e.target.value === "" ? "" : parseFloat(e.target.value))} />
                     </div>
                     <div className="md:col-span-2">
                       <label className="text-xs text-muted-foreground mb-1 block truncate">Qty ({item.primaryUnit || "Yard"})</label>
-                      <Input className="h-8 px-2 bg-slate-100 cursor-not-allowed font-medium" type="number" step="any" min={0} value={item.meters} readOnly />
+                      <Input className="h-8 px-2 bg-slate-100 cursor-not-allowed font-medium" type="number" step="any" min={0} value={item.kgs} readOnly />
                     </div>
                     <div className="md:col-span-2">
                       <label className="text-xs text-muted-foreground mb-1 block truncate">Harga / {item.primaryUnit || "Yard"}</label>
-                      <Input className="h-8 px-2" type="number" step="any" min={0} value={item.pricePerMeter} onChange={e => updateItem(index, "pricePerMeter", e.target.value === "" ? "" : parseFloat(e.target.value))} />
+                      <Input className="h-8 px-2" type="number" step="any" min={0} value={item.pricePerKg} onChange={e => updateItem(index, "pricePerKg", e.target.value === "" ? "" : parseFloat(e.target.value))} />
                     </div>
                     <div className="md:col-span-1">
                       <label className="text-xs text-muted-foreground mb-1 block">Subtotal</label>
@@ -625,26 +625,26 @@ export default function Pembelian() {
                     </div>
                   </div>
 
-                  {/* Dynamic inputs for roll lengths */}
-                  {item.rolls && (item.rolls as number) > 0 && (
+                  {/* Dynamic inputs for krat lengths */}
+                  {item.krats && (item.krats as number) > 0 && (
                     <div className="mt-2 bg-white p-3 rounded-lg border border-slate-200">
-                      <label className="text-xs font-semibold text-slate-700 block mb-2 border-b pb-1">Detail Panjang Tiap Roll ({item.primaryUnit || "Yard"})</label>
+                      <label className="text-xs font-semibold text-slate-700 block mb-2 border-b pb-1">Detail Panjang Tiap Krat ({item.primaryUnit || "Yard"})</label>
                       <div className="flex flex-wrap gap-3">
-                        {Array.from({ length: item.rolls as number }).map((_, i) => (
+                        {Array.from({ length: item.krats as number }).map((_, i) => (
                           <div key={i} className="flex flex-col w-24 shrink-0 space-y-1 relative group">
-                            <label className="text-[10px] font-medium text-slate-500 truncate">Roll #{i + 1}</label>
+                            <label className="text-[10px] font-medium text-slate-500 truncate">Krat #{i + 1}</label>
                             <Input
                               type="number" step="any" min={0}
                               placeholder="Yard"
                               className="h-8 text-xs px-2"
-                              value={item.rollLengths?.[i] || ''}
-                              onChange={e => updateItem(index, `rollLengths.${i}` as any, e.target.value === "" ? "" : parseFloat(e.target.value))}
+                              value={item.batchWeights?.[i] || ''}
+                              onChange={e => updateItem(index, `batchWeights.${i}` as any, e.target.value === "" ? "" : parseFloat(e.target.value))}
                             />
                             <button 
                               type="button" 
-                              onClick={() => removeRollLength(index, i)} 
+                              onClick={() => removeKratLength(index, i)} 
                               className="absolute -top-1 -right-1 bg-red-100 hover:bg-red-200 text-red-600 rounded-full p-0.5 transition-opacity"
-                              title="Hapus Roll Ini"
+                              title="Hapus Krat Ini"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -716,7 +716,7 @@ export default function Pembelian() {
                   <li><strong>Tanggal</strong> — format dd/mm/yyyy</li>
                   <li><strong>Supplier</strong> — nama supplier sesuai di sistem (wajib)</li>
                   <li><strong>Produk / Barang</strong> — nama barang sesuai di sistem (wajib)</li>
-                  <li><strong>Roll</strong>, <strong>Meter/Yard</strong>, <strong>Harga / Meter</strong>, <strong>Subtotal</strong></li>
+                  <li><strong>Krat</strong>, <strong>Kg/Yard</strong>, <strong>Harga / Kg</strong>, <strong>Subtotal</strong></li>
                   <li><strong>Metode Bayar</strong> — tunai / kredit / tempo</li>
                 </ul>
                 <p className="text-blue-600 mt-1">⚠️ Invoice yang sudah ada di sistem akan dilewati otomatis.</p>

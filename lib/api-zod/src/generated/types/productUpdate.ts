@@ -16,12 +16,12 @@ export interface ProductUpdate {
   rackLocation?: string;
   imageUrl?: string | null;
   description?: string | null;
-  costPricePerMeter?: number;
-  costPricePerRoll?: number;
-  pricePerMeter?: number;
-  pricePerRoll?: number;
+  costPricePerKg?: number;
+  costPricePerKrat?: number;
+  pricePerKg?: number;
+  pricePerKrat?: number;
   minStock?: number;
-  rollStock?: number;
-  meterStock?: number;
-  rollLengths?: number[];
+  kratStock?: number;
+  kgStock?: number;
+  batchWeights?: number[];
 }

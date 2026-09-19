@@ -4,11 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
-  useGetProductRolls, 
-  useCreateProductRoll, 
-  useUpdateProductRoll, 
-  useDeleteProductRoll,
-  getGetProductRollsQueryKey,
+  useGetProductBatchs, 
+  useCreateProductBatch, 
+  useUpdateProductBatch, 
+  useDeleteProductBatch,
+  getGetProductBatchsQueryKey,
   getListProductsQueryKey
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -17,35 +17,35 @@ import { PackageX, Pencil, Trash2, Plus, Check, X, ArrowUpDown, ArrowUp, ArrowDo
 import { formatNumber } from "@/lib/utils";
 
 
-interface ProductRollsModalProps {
+interface ProductBatchesModalProps {
   productId: number | null;
   productName: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-type Roll = {
+type Krat = {
   id: number;
   barcode: string;
-  originalLength: number;
-  currentLength: number;
+  originalWeight: number;
+  currentWeight: number;
   status: string;
   createdAt: string;
 };
 
-export function ProductRollsModal({ productId, productName, isOpen, onClose }: ProductRollsModalProps) {
+export function ProductBatchesModal({ productId, productName, isOpen, onClose }: ProductBatchesModalProps) {
   const queryClient = useQueryClient();
-  const { data: rolls, isLoading } = useGetProductRolls(productId ?? 0, {
+  const { data: krats, isLoading } = useGetProductBatchs(productId ?? 0, {
     query: {
-      queryKey: getGetProductRollsQueryKey(productId ?? 0),
+      queryKey: getGetProductBatchsQueryKey(productId ?? 0),
       enabled: !!productId && isOpen,
     }
   });
 
-  const createMutation = useCreateProductRoll({
+  const createMutation = useCreateProductBatch({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetProductRollsQueryKey(productId ?? 0) });
+        queryClient.invalidateQueries({ queryKey: getGetProductBatchsQueryKey(productId ?? 0) });
         queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
         setIsAdding(false);
         setNewBarcode("");
@@ -54,27 +54,27 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
     }
   });
 
-  const updateMutation = useUpdateProductRoll({
+  const updateMutation = useUpdateProductBatch({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetProductRollsQueryKey(productId ?? 0) });
+        queryClient.invalidateQueries({ queryKey: getGetProductBatchsQueryKey(productId ?? 0) });
         queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
-        setEditingRollId(null);
+        setEditingKratId(null);
       }
     }
   });
 
-  const deleteMutation = useDeleteProductRoll({
+  const deleteMutation = useDeleteProductBatch({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetProductRollsQueryKey(productId ?? 0) });
+        queryClient.invalidateQueries({ queryKey: getGetProductBatchsQueryKey(productId ?? 0) });
         queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
       }
     }
   });
 
   // State for inline editing (via detail panel)
-  const [editingRollId, setEditingRollId] = useState<number | null>(null);
+  const [editingKratId, setEditingKratId] = useState<number | null>(null);
   const [editOriginalLength, setEditOriginalLength] = useState<string>("");
   const [editCurrentLength, setEditCurrentLength] = useState<string>("");
 
@@ -90,63 +90,63 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
   const [sortOrder, setSortOrder] = useState<SortOrder>("default");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const [selectedRollIds, setSelectedRollIds] = useState<number[]>([]);
+  const [selectedKratIds, setSelectedKratIds] = useState<number[]>([]);
   const [isDeletingBulk, setIsDeletingBulk] = useState(false);
 
 
   const handleBulkDelete = async () => {
-    if (!productId || selectedRollIds.length === 0) return;
+    if (!productId || selectedKratIds.length === 0) return;
     
-    if (window.confirm(`Anda yakin ingin menghapus ${selectedRollIds.length} roll terpilih? Data yang dihapus tidak dapat dikembalikan.`)) {
+    if (window.confirm(`Anda yakin ingin menghapus ${selectedKratIds.length} krat terpilih? Data yang dihapus tidak dapat dikembalikan.`)) {
       setIsDeletingBulk(true);
       try {
-        for (const rollId of selectedRollIds) {
-          await deleteMutation.mutateAsync({ id: productId, rollId });
+        for (const batchId of selectedKratIds) {
+          await deleteMutation.mutateAsync({ id: productId, batchId });
         }
-        setSelectedRollIds([]);
+        setSelectedKratIds([]);
       } catch (error) {
-        console.error("Gagal menghapus beberapa roll", error);
+        console.error("Gagal menghapus beberapa krat", error);
       } finally {
         setIsDeletingBulk(false);
       }
     }
   };
-  const startEdit = (roll: Roll) => {
-    setEditingRollId(roll.id);
-    setEditOriginalLength(Number(roll.originalLength).toString());
-    setEditCurrentLength(Number(roll.currentLength).toString());
+  const startEdit = (krat: Krat) => {
+    setEditingKratId(krat.id);
+    setEditOriginalLength(Number(krat.originalWeight).toString());
+    setEditCurrentLength(Number(krat.currentWeight).toString());
   };
 
-  const cancelEdit = () => setEditingRollId(null);
+  const cancelEdit = () => setEditingKratId(null);
 
-  const saveEdit = (rollId: number) => {
+  const saveEdit = (batchId: number) => {
     if (!productId) return;
     updateMutation.mutate({
       id: productId,
-      rollId: rollId,
+      batchId: batchId,
       data: {
-        originalLength: parseFloat(editOriginalLength) || 0,
-        currentLength: parseFloat(editCurrentLength) || 0
+        originalWeight: parseFloat(editOriginalLength) || 0,
+        currentWeight: parseFloat(editCurrentLength) || 0
       }
     });
   };
 
   const [isEditingBulk, setIsEditingBulk] = useState(false);
-  const [bulkEditValues, setBulkEditValues] = useState<Record<number, { originalLength: string, currentLength: string }>>({});
+  const [bulkEditValues, setBulkEditValues] = useState<Record<number, { originalWeight: string, currentWeight: string }>>({});
   const [isSavingBulk, setIsSavingBulk] = useState(false);
 
   const startBulkEdit = () => {
-    const initialValues: Record<number, { originalLength: string, currentLength: string }> = {};
-    selectedRollIds.forEach(id => {
-      const roll = rolls?.find((r: Roll) => r.id === id);
-      if (roll) {
-         initialValues[id] = { originalLength: String(roll.originalLength), currentLength: String(roll.currentLength) };
+    const initialValues: Record<number, { originalWeight: string, currentWeight: string }> = {};
+    selectedKratIds.forEach(id => {
+      const krat = krats?.find((r: Krat) => r.id === id);
+      if (krat) {
+         initialValues[id] = { originalWeight: String(krat.originalWeight), currentWeight: String(krat.currentWeight) };
       }
     });
     setBulkEditValues(initialValues);
     setIsEditingBulk(true);
     setIsAdding(false);
-    setEditingRollId(null);
+    setEditingKratId(null);
   };
 
   const saveBulkEdit = async () => {
@@ -156,15 +156,15 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
       for (const [id, vals] of Object.entries(bulkEditValues)) {
         await updateMutation.mutateAsync({
           id: productId,
-          rollId: parseInt(id),
+          batchId: parseInt(id),
           data: {
-            originalLength: parseFloat(vals.originalLength) || 0,
-            currentLength: parseFloat(vals.currentLength) || 0
+            originalWeight: parseFloat(vals.originalWeight) || 0,
+            currentWeight: parseFloat(vals.currentWeight) || 0
           }
         });
       }
       setIsEditingBulk(false);
-      setSelectedRollIds([]);
+      setSelectedKratIds([]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -179,7 +179,7 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
     setIsCreatingMultiple(true);
     
     try {
-      // Loop to create multiple rolls if qty > 1
+      // Loop to create multiple krats if qty > 1
       for (let i = 0; i < qty; i++) {
         const rawLen = newLengths[i];
         const len = typeof rawLen === 'string' ? parseFloat(rawLen.replace(',', '.')) || 0 : (rawLen || 0);
@@ -187,8 +187,8 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
           id: productId,
           data: {
             barcode: qty === 1 ? (newBarcode || undefined) : undefined, // If multiple, ignore manual barcode to auto-generate
-            originalLength: len,
-            currentLength: len
+            originalWeight: len,
+            currentWeight: len
           }
         });
       }
@@ -197,28 +197,28 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
       setNewQty("1");
       setIsAdding(false);
     } catch (error) {
-      console.error("Failed to create rolls:", error);
+      console.error("Failed to create krats:", error);
     } finally {
       setIsCreatingMultiple(false);
     }
   };
 
-  const editingRoll = rolls?.find((r: Roll) => r.id === editingRollId);
+  const editingKrat = krats?.find((r: Krat) => r.id === editingKratId);
 
   // Total & summary
-  const totalYds = rolls?.reduce((acc: number, r: Roll) => acc + (r.currentLength || 0), 0) ?? 0;
-  const totalRolls = rolls?.length ?? 0;
+  const totalYds = krats?.reduce((acc: number, r: Krat) => acc + (r.currentWeight || 0), 0) ?? 0;
+  const totalKrats = krats?.length ?? 0;
 
-  // Filtered + sorted rolls
-  const sortedRolls: Roll[] = (() => {
-    if (!rolls) return [];
-    let result = [...rolls] as Roll[];
+  // Filtered + sorted krats
+  const sortedKrats: Krat[] = (() => {
+    if (!krats) return [];
+    let result = [...krats] as Krat[];
     // filter status
     if (statusFilter === "available") result = result.filter(r => r.status === "available");
     else if (statusFilter === "empty") result = result.filter(r => r.status !== "available");
     // sort
-    if (sortOrder === "asc") result.sort((a, b) => a.currentLength - b.currentLength);
-    else if (sortOrder === "desc") result.sort((a, b) => b.currentLength - a.currentLength);
+    if (sortOrder === "asc") result.sort((a, b) => a.currentWeight - b.currentWeight);
+    else if (sortOrder === "desc") result.sort((a, b) => b.currentWeight - a.currentWeight);
     return result;
   })();
 
@@ -243,14 +243,14 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
             <div className="min-w-0">
               <DrawerTitle className="text-[15px] font-bold leading-tight truncate">{productName}</DrawerTitle>
               <div className="flex items-center gap-3 mt-1">
-                <span className="text-xs text-slate-500">Roll: <span className="font-bold text-slate-700">{totalRolls}</span></span>
+                <span className="text-xs text-slate-500">Krat: <span className="font-bold text-slate-700">{totalKrats}</span></span>
                 <span className="text-slate-300">·</span>
-                <span className="text-xs text-slate-500">Sisa: <span className="font-bold text-slate-700">{formatNumber(totalYds)} yds</span></span>
+                <span className="text-xs text-slate-500">Sisa: <span className="font-bold text-slate-700">{formatNumber(totalYds)} kg</span></span>
               </div>
             </div>
             <Button
               size="sm"
-              onClick={() => { setIsAdding(true); setEditingRollId(null); }}
+              onClick={() => { setIsAdding(true); setEditingKratId(null); }}
               className="h-8 text-xs px-3 rounded-xl bg-violet-600 hover:bg-violet-700 shrink-0"
               disabled={isAdding}
             >
@@ -260,16 +260,16 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
 
           {/* Sort & Filter toolbar */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            {selectedRollIds.length > 0 ? (
+            {selectedKratIds.length > 0 ? (
               <div className="flex items-center gap-2 w-full mb-1 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-200">
-                <span className="text-xs font-semibold">{selectedRollIds.length} roll terpilih</span>
+                <span className="text-xs font-semibold">{selectedKratIds.length} krat terpilih</span>
                 <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-blue-700 hover:text-blue-800 hover:bg-blue-100 ml-auto" onClick={startBulkEdit} disabled={isDeletingBulk}>
                   <Pencil className="h-3 w-3 mr-1" /> Edit
                 </Button>
                 <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-red-700 hover:text-red-800 hover:bg-red-100" onClick={handleBulkDelete} disabled={isDeletingBulk}>
                   {isDeletingBulk ? <span className="h-3 w-3 rounded-full border-2 border-red-600 border-t-transparent animate-spin mr-1" /> : <Trash2 className="h-3 w-3 mr-1" />} Hapus
                 </Button>
-                <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setSelectedRollIds([])} disabled={isDeletingBulk}>
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setSelectedKratIds([])} disabled={isDeletingBulk}>
                   Batal
                 </Button>
               </div>
@@ -311,23 +311,23 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
               ))}
             </div>
 
-            {rolls && rolls.length > 0 && (
+            {krats && krats.length > 0 && (
               <button
-                onClick={() => setSelectedRollIds(
-                  selectedRollIds.length === sortedRolls.length 
+                onClick={() => setSelectedKratIds(
+                  selectedKratIds.length === sortedKrats.length 
                     ? [] 
-                    : sortedRolls.map(r => r.id)
+                    : sortedKrats.map(r => r.id)
                 )}
                 className="px-2.5 py-1 rounded-full text-xs font-medium border bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-primary transition-all ml-1"
               >
-                {selectedRollIds.length === sortedRolls.length && sortedRolls.length > 0 ? "Batal Pilih" : "Pilih Semua"}
+                {selectedKratIds.length === sortedKrats.length && sortedKrats.length > 0 ? "Batal Pilih" : "Pilih Semua"}
               </button>
             )}
 
             {/* Tampilkan jumlah hasil filter */}
             {(sortOrder !== "default" || statusFilter !== "all") && (
               <span className="text-xs text-muted-foreground ml-auto">
-                Menampilkan {sortedRolls.length} dari {totalRolls} roll
+                Menampilkan {sortedKrats.length} dari {totalKrats} krat
               </span>
             )}
           </div>
@@ -336,9 +336,9 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
         <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
           
           {/* Sidebar for Add / Edit */}
-          {(isAdding || editingRoll || isEditingBulk) && (
+          {(isAdding || editingKrat || isEditingBulk) && (
             <div className="w-full lg:w-[55%] xl:w-[60%] flex flex-col gap-3 shrink-0 min-h-0 overflow-y-auto pr-1">
-              {/* Add new roll form */}
+              {/* Add new krat form */}
               {isAdding && (
                 <div className="flex flex-col gap-3 p-4 rounded-xl border border-dashed border-primary/40 bg-primary/5">
                   <div className="flex items-center gap-3">
@@ -376,11 +376,11 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                   
                   {parseInt(newQty) > 0 && (
                     <div className="bg-white p-4 rounded-xl border border-slate-200 mt-1 shadow-sm">
-                      <label className="text-sm font-bold text-slate-800 block mb-3 border-b pb-2">Detail Panjang Tiap Roll (yds)</label>
+                      <label className="text-sm font-bold text-slate-800 block mb-3 border-b pb-2">Detail Berat Tiap Krat (kg)</label>
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[50vh] overflow-y-auto p-1">
                         {Array.from({ length: parseInt(newQty) || 0 }).map((_, i) => (
                           <div key={i} className="space-y-1.5 bg-slate-50 p-2 rounded-lg border border-slate-100 relative group">
-                            <label className="text-[11px] font-bold text-slate-500 block text-center uppercase tracking-wider">Roll #{i + 1}</label>
+                            <label className="text-[11px] font-bold text-slate-500 block text-center uppercase tracking-wider">Krat #{i + 1}</label>
                             <Input
                               type="text" inputMode="decimal"
                               placeholder="0.00"
@@ -403,7 +403,7 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                                 setNewQty(String(Math.max(0, parseInt(newQty) - 1)));
                               }}
                               className="absolute -top-1 -right-1 bg-red-100 hover:bg-red-200 text-red-600 rounded-full p-0.5 transition-opacity"
-                              title="Hapus Roll Ini"
+                              title="Hapus Krat Ini"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -415,21 +415,21 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                 </div>
               )}
 
-              {/* Edit panel (shown when a roll is selected) */}
-              {editingRoll && (
+              {/* Edit panel (shown when a krat is selected) */}
+              {editingKrat && (
                 <div className="flex flex-col gap-3 p-4 rounded-xl border-2 border-blue-200 bg-blue-50/80 dark:bg-blue-900/20 shadow-sm relative overflow-hidden shrink-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-base font-bold text-blue-700 dark:text-blue-300">
-                      ✏️ Edit Roll #{editingRoll.id}
+                      ✏️ Edit Krat #{editingKrat.id}
                     </span>
                     <div className="flex items-center gap-2">
-                      <Button size="sm" className="h-9 px-3 bg-green-600 hover:bg-green-700 text-white font-medium" onClick={() => saveEdit(editingRoll.id)} disabled={updateMutation.isPending}>
+                      <Button size="sm" className="h-9 px-3 bg-green-600 hover:bg-green-700 text-white font-medium" onClick={() => saveEdit(editingKrat.id)} disabled={updateMutation.isPending}>
                         <Check className="h-4 w-4 mr-1.5" /> Simpan
                       </Button>
                       <Button size="sm" variant="outline" className="h-9 w-9 p-0 text-destructive hover:bg-red-50 hover:text-red-600 border-red-200" onClick={() => {
-                        if (window.confirm("Apakah Anda yakin ingin menghapus roll ini? Data akan hilang secara permanen.")) {
-                          deleteMutation.mutate({ id: productId!, rollId: editingRoll.id });
-                          setEditingRollId(null);
+                        if (window.confirm("Apakah Anda yakin ingin menghapus krat ini? Data akan hilang secara permanen.")) {
+                          deleteMutation.mutate({ id: productId!, batchId: editingKrat.id });
+                          setEditingKratId(null);
                         }
                       }}>
                         <Trash2 className="h-4 w-4" />
@@ -443,7 +443,7 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                   <div className="flex gap-6">
                     <div className="flex-1">
                       <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 block">
-                        Pjg Awal <span className="font-normal text-muted-foreground">(yds)</span>
+                        Berat Awal <span className="font-normal text-muted-foreground">(kg)</span>
                       </label>
                       <Input
                         type="number"
@@ -454,7 +454,7 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                     </div>
                     <div className="flex-1">
                       <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 block">
-                        Sisa <span className="font-normal text-muted-foreground">(yds)</span>
+                        Sisa <span className="font-normal text-muted-foreground">(kg)</span>
                       </label>
                       <Input
                         type="number"
@@ -472,7 +472,7 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                 <div className="flex flex-col gap-3 p-4 rounded-xl border-2 border-blue-300 bg-blue-50 shadow-sm relative overflow-hidden shrink-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-base font-bold text-blue-700">
-                      ✏️ Edit Massal ({Object.keys(bulkEditValues).length} Roll)
+                      ✏️ Edit Massal ({Object.keys(bulkEditValues).length} Krat)
                     </span>
                     <div className="flex items-center gap-2">
                       <Button size="sm" className="h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white font-medium" onClick={saveBulkEdit} disabled={isSavingBulk}>
@@ -488,27 +488,27 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                       {Object.entries(bulkEditValues)
                         .sort(([idA], [idB]) => {
-                          const idxA = rolls?.findIndex((r: Roll) => r.id === parseInt(idA)) ?? 0;
-                          const idxB = rolls?.findIndex((r: Roll) => r.id === parseInt(idB)) ?? 0;
+                          const idxA = krats?.findIndex((r: Krat) => r.id === parseInt(idA)) ?? 0;
+                          const idxB = krats?.findIndex((r: Krat) => r.id === parseInt(idB)) ?? 0;
                           return idxA - idxB;
                         })
                         .map(([id, vals]) => {
                         const numericId = parseInt(id);
-                        const rollIdx = rolls?.findIndex((r: Roll) => r.id === numericId);
-                        const displayNum = rollIdx !== undefined && rollIdx >= 0 ? rollIdx + 1 : id;
+                        const batchIdx = krats?.findIndex((r: Krat) => r.id === numericId);
+                        const displayNum = batchIdx !== undefined && batchIdx >= 0 ? batchIdx + 1 : id;
                         return (
                           <div key={id} className="space-y-1.5 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                            <label className="text-[11px] font-bold text-slate-500 block text-center uppercase tracking-wider">Roll #{displayNum}</label>
+                            <label className="text-[11px] font-bold text-slate-500 block text-center uppercase tracking-wider">Krat #{displayNum}</label>
                             <div className="flex gap-1.5">
                               <div className="flex-1">
                                 <span className="text-[9px] text-muted-foreground block mb-0.5">Awal</span>
                                 <Input
                                   type="number"
                                   className="h-8 text-xs font-medium text-center border-slate-300 px-1"
-                                  value={vals.originalLength}
+                                  value={vals.originalWeight}
                                   onChange={e => {
                                     const val = e.target.value;
-                                    setBulkEditValues(prev => ({ ...prev, [numericId]: { ...prev[numericId], originalLength: val } }));
+                                    setBulkEditValues(prev => ({ ...prev, [numericId]: { ...prev[numericId], originalWeight: val } }));
                                   }}
                                   disabled={isSavingBulk}
                                 />
@@ -518,10 +518,10 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                                 <Input
                                   type="number"
                                   className="h-8 text-xs font-bold text-center border-blue-300 bg-blue-50/50 text-blue-700 px-1"
-                                  value={vals.currentLength}
+                                  value={vals.currentWeight}
                                   onChange={e => {
                                     const val = e.target.value;
-                                    setBulkEditValues(prev => ({ ...prev, [numericId]: { ...prev[numericId], currentLength: val } }));
+                                    setBulkEditValues(prev => ({ ...prev, [numericId]: { ...prev[numericId], currentWeight: val } }));
                                   }}
                                   disabled={isSavingBulk}
                                 />
@@ -537,7 +537,7 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
             </div>
           )}
 
-          {/* Compact grid of rolls */}
+          {/* Compact grid of krats */}
           <div className="flex-1 overflow-y-auto min-h-0 border border-primary/40 rounded-lg flex flex-col bg-slate-50/50">
             <div className="flex-1 overflow-y-auto p-1.5">
               {isLoading ? (
@@ -546,24 +546,24 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                     <Skeleton key={i} className="h-24 rounded-xl" />
                   ))}
                 </div>
-              ) : !rolls || rolls.length === 0 ? (
+              ) : !krats || krats.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground h-full">
                   <PackageX className="mb-2 h-10 w-10 opacity-25" />
-                  <span className="text-sm">Tidak ada roll tersedia</span>
+                  <span className="text-sm">Tidak ada krat tersedia</span>
                 </div>
               ) : (
                 <div className={`grid gap-1.5 ${
-                  isAdding || editingRoll || isEditingBulk
+                  isAdding || editingKrat || isEditingBulk
                     ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-3'
                     : 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7'
                 }`}>
-                    {sortedRolls.length === 0 ? (
+                    {sortedKrats.length === 0 ? (
                       <div className="col-span-full flex flex-col items-center justify-center py-10 text-muted-foreground h-full">
                         <Filter className="mb-2 h-6 w-6 opacity-30" />
-                        <span className="text-xs">Tidak ada roll yang cocok dengan filter</span>
+                        <span className="text-xs">Tidak ada krat yang cocok dengan filter</span>
                       </div>
-                    ) : sortedRolls.map((r: Roll, idx: number) => {
-                      const isEditing = editingRollId === r.id;
+                    ) : sortedKrats.map((r: Krat, idx: number) => {
+                      const isEditing = editingKratId === r.id;
                       const isAvailable = r.status === "available";
                       // Shorten barcode: show last 8 chars
                       const shortBarcode = r.barcode
@@ -574,11 +574,11 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                       const tglMasuk = r.createdAt
                         ? new Date(r.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "2-digit" })
                         : "-";
-                      const pemakaian = r.originalLength > 0
-                        ? Math.max(0, r.originalLength - r.currentLength)
+                      const pemakaian = r.originalWeight > 0
+                        ? Math.max(0, r.originalWeight - r.currentWeight)
                         : 0;
-                      const persen = r.originalLength > 0
-                        ? Math.round((r.currentLength / r.originalLength) * 100)
+                      const persen = r.originalWeight > 0
+                        ? Math.round((r.currentWeight / r.originalWeight) * 100)
                         : 100;
 
                       return (
@@ -600,7 +600,7 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                               : isAvailable
                               ? "bg-white border-slate-100 hover:border-violet-200 hover:bg-violet-50/30"
                               : "bg-slate-50 border-slate-100 opacity-60",
-                            selectedRollIds.includes(r.id) ? "border-red-300 bg-red-50/60" : "",
+                            selectedKratIds.includes(r.id) ? "border-red-300 bg-red-50/60" : "",
                           ].join(" ")}
                         >
                           {/* Row 1: Nomor + Status badge */}
@@ -609,18 +609,18 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                               <input
                                 type="checkbox"
                                 className="w-3 h-3 cursor-pointer accent-red-600"
-                                checked={selectedRollIds.includes(r.id)}
+                                checked={selectedKratIds.includes(r.id)}
                                 onChange={() => {}}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSelectedRollIds(prev => prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]);
+                                  setSelectedKratIds(prev => prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]);
                                 }}
                               />
                               <span className={[
                                 "font-bold text-[11px]",
                                 isEditing ? "text-blue-600" : isAvailable ? "text-primary" : "text-muted-foreground",
                               ].join(" ")}>
-                                Roll #{idx + 1}
+                                Krat #{idx + 1}
                               </span>
                             </div>
                             <span className={[
@@ -648,7 +648,7 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                           <div className="flex items-center justify-between w-full mt-0.5">
                             <span className="text-[9px] text-muted-foreground">Awal:</span>
                             <span className="text-[10px] font-medium text-foreground">
-                              {formatNumber(r.originalLength)} <span className="text-muted-foreground font-normal">yds</span>
+                              {formatNumber(r.originalWeight)} <span className="text-muted-foreground font-normal">kg</span>
                             </span>
                           </div>
 
@@ -662,14 +662,14 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
                               "text-[11px] font-bold",
                               isAvailable ? "text-primary" : "text-muted-foreground line-through",
                             ].join(" ")}>
-                              {formatNumber(r.currentLength)} <span className="text-[9px] font-normal">yds</span>
+                              {formatNumber(r.currentWeight)} <span className="text-[9px] font-normal">kg</span>
                             </span>
                           </div>
 
                           {/* Row 5: Pemakaian & Tgl */}
                           <div className="flex items-center justify-between w-full mt-1">
                             <span className="text-[9px] text-orange-500 dark:text-orange-400 font-medium">
-                              {pemakaian > 0 ? `Terpakai: ${formatNumber(pemakaian)} yds` : "Belum terpakai"}
+                              {pemakaian > 0 ? `Terpakai: ${formatNumber(pemakaian)} kg` : "Belum terpakai"}
                             </span>
                             <span className="text-[9px] text-muted-foreground">{tglMasuk}</span>
                           </div>
@@ -692,7 +692,7 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
             </div>
 
             {/* Legend */}
-            {rolls && rolls.length > 0 && (
+            {krats && krats.length > 0 && (
               <div className="flex items-center flex-wrap gap-x-4 gap-y-1 p-2 bg-slate-50 border-t border-primary/20 text-xs text-muted-foreground shrink-0 mt-auto">
                 <span className="flex items-center gap-1">
                   <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500" />
@@ -721,3 +721,4 @@ export function ProductRollsModal({ productId, productName, isOpen, onClose }: P
     </Drawer>
   );
 }
+

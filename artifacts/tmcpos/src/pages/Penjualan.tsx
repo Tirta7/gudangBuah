@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { PaginationControl } from "../components/PaginationControl";
-import { useListSales, useCreateSale, useListCustomers, useListProducts, useListPaymentMethods, useGetProductRolls, useListCategories, useGetSale, getListSalesQueryKey, getListCustomersQueryKey, getListProductsQueryKey, getListPaymentMethodsQueryKey, getGetProductRollsQueryKey, getListCategoriesQueryKey } from "@workspace/api-client-react";
+import { useListSales, useCreateSale, useListCustomers, useListProducts, useListPaymentMethods, useGetProductBatchs, useListCategories, useGetSale, getListSalesQueryKey, getListCustomersQueryKey, getListProductsQueryKey, getListPaymentMethodsQueryKey, getGetProductBatchsQueryKey, getListCategoriesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,7 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 // ─── API Helpers ─────────────────────────────────────────────────────────────
 const API_BASE = window.location.origin;
 
-type SaleItem = { categoryId?: number; productId: number; productName: string; rollId?: number; selectedRolls?: {id: number, currentLength: number}[]; unit: "meter" | "roll"; rolls: number | ""; meters: number | ""; pricePerUnit: number | ""; subtotal: number; primaryUnit?: string; secondaryUnit?: string; targetLength?: number; };
+type SaleItem = { categoryId?: number; productId: number; productName: string; batchId?: number; selectedKrats?: {id: number, currentWeight: number}[]; unit: "kg" | "krat"; krats: number | ""; kgs: number | ""; pricePerUnit: number | ""; subtotal: number; primaryUnit?: string; secondaryUnit?: string; targetLength?: number; };
 
 const STATUS_COLORS: Record<string, string> = {
   lunas: "bg-green-100 text-green-700 border-green-200",
@@ -69,86 +69,86 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
       }
     }
   }, [item.productId, item.categoryId, item.primaryUnit, item.secondaryUnit, products, index, updateItem]);
-  const [isRollModalOpen, setIsRollModalOpen] = useState(false);
-  const [rollSearch, setRollSearch] = useState("");
-  const [rollPage, setRollPage] = useState(1);
+  const [isKratModalOpen, setIsKratModalOpen] = useState(false);
+  const [kratSearch, setKratSearch] = useState("");
+  const [kratPage, setKratPage] = useState(1);
   const itemsPerPage = 100; // Increased to 100 for grid layout
   
-  const { data: rollsData } = useGetProductRolls(item.productId, {
-    query: { queryKey: getGetProductRollsQueryKey(item.productId), enabled: !!item.productId }
+  const { data: kratsData } = useGetProductBatchs(item.productId, {
+    query: { queryKey: getGetProductBatchsQueryKey(item.productId), enabled: !!item.productId }
   });
   
-  const rolls = Array.isArray(rollsData) ? rollsData : (rollsData as any)?.rolls ?? [];
+  const krats = Array.isArray(kratsData) ? kratsData : (kratsData as any)?.krats ?? [];
   
   const drawerContainer = typeof document !== 'undefined' ? document.getElementById("drawer-portal-target") : null;
 
-  // Kumpulkan semua roll ID yang sudah dipilih di baris lain (mode Pilih Spesifik Barcode)
-  const usedRollIds = new Set<number>(
+  // Kumpulkan semua krat ID yang sudah dipilih di baris lain (mode Pilih Spesifik Barcode)
+  const usedKratIds = new Set<number>(
     (allItems as any[] || []).flatMap((otherItem: any, i: number) => {
       if (i === index) return []; // skip baris ini sendiri
-      return (otherItem.selectedRolls || []).map((sr: any) => sr.id);
+      return (otherItem.selectedKrats || []).map((sr: any) => sr.id);
     })
   );
 
-  // Kumpulkan berapa roll per panjang yang sudah dikonsumsi baris lain (mode Pilih Otomatis Per Ukuran)
+  // Kumpulkan berapa krat per panjang yang sudah dikonsumsi baris lain (mode Pilih Otomatis Per Ukuran)
   const usedLengthCounts: Record<string, number> = {};
   (allItems as any[] || []).forEach((otherItem: any, i: number) => {
     if (i === index) return; // skip baris ini sendiri
-    if (otherItem.targetLength && typeof otherItem.rolls === "number" && otherItem.rolls > 0) {
+    if (otherItem.targetLength && typeof otherItem.krats === "number" && otherItem.krats > 0) {
       const key = otherItem.targetLength.toString();
-      usedLengthCounts[key] = (usedLengthCounts[key] || 0) + otherItem.rolls;
+      usedLengthCounts[key] = (usedLengthCounts[key] || 0) + otherItem.krats;
     }
   });
 
-  // Reservasi virtual: roll yang diklaim mode Otomatis di baris lain → sembunyikan juga dari Barcode Spesifik
-  const reservedRollIds = new Set<number>();
-  if (rolls) {
-    // Kelompokkan roll berdasarkan panjang (kecuali yang sudah dipakai selectedRolls)
-    const rollsByLength: Record<string, any[]> = {};
-    rolls.filter((r: any) => r.status === 'available' && !usedRollIds.has(r.id)).forEach((r: any) => {
-      const len = r.currentLength.toString();
-      if (!rollsByLength[len]) rollsByLength[len] = [];
-      rollsByLength[len].push(r);
+  // Reservasi virtual: krat yang diklaim mode Otomatis di baris lain → sembunyikan juga dari Barcode Spesifik
+  const reservedKratIds = new Set<number>();
+  if (krats) {
+    // Kelompokkan krat berdasarkan panjang (kecuali yang sudah dipakai selectedKrats)
+    const kratsByLength: Record<string, any[]> = {};
+    krats.filter((r: any) => r.status === 'available' && !usedKratIds.has(r.id)).forEach((r: any) => {
+      const len = r.currentWeight.toString();
+      if (!kratsByLength[len]) kratsByLength[len] = [];
+      kratsByLength[len].push(r);
     });
-    // Tandai N roll pertama per panjang sebagai "reserved" sesuai klaim baris lain
+    // Tandai N krat pertama per panjang sebagai "reserved" sesuai klaim baris lain
     Object.entries(usedLengthCounts).forEach(([len, count]) => {
-      (rollsByLength[len] || []).slice(0, count).forEach((r: any) => reservedRollIds.add(r.id));
+      (kratsByLength[len] || []).slice(0, count).forEach((r: any) => reservedKratIds.add(r.id));
     });
   }
 
-  // Roll yang tersedia = tidak dipakai barcode spesifik DAN tidak direservasi mode Otomatis
-  const availableRolls = rolls?.filter((r: any) => r.status === 'available' && !usedRollIds.has(r.id) && !reservedRollIds.has(r.id)) || [];
+  // Krat yang tersedia = tidak dipakai barcode spesifik DAN tidak direservasi mode Otomatis
+  const availableKrats = krats?.filter((r: any) => r.status === 'available' && !usedKratIds.has(r.id) && !reservedKratIds.has(r.id)) || [];
   const lengthGroups: Record<string, number> = {};
-  availableRolls.forEach((r: any) => {
-    const len = r.currentLength.toString();
+  availableKrats.forEach((r: any) => {
+    const len = r.currentWeight.toString();
     lengthGroups[len] = (lengthGroups[len] || 0) + 1;
   });
 
-  const maxRolls = item.unit === "roll" && item.targetLength ? lengthGroups[item.targetLength.toString()] ?? 0 : undefined;
+  const maxKrats = item.unit === "krat" && item.targetLength ? lengthGroups[item.targetLength.toString()] ?? 0 : undefined;
 
   // Auto-zero subtotal saat stok habis diklaim baris lain (mode Pilih Otomatis)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (item.targetLength !== undefined && maxRolls === 0) {
+    if (item.targetLength !== undefined && maxKrats === 0) {
       // Reset ke 0 agar subtotal tidak terhitung ke total
-      if (typeof item.rolls === "number" && item.rolls > 0) {
-        updateItem(index, "rolls", 0);
+      if (typeof item.krats === "number" && item.krats > 0) {
+        updateItem(index, "krats", 0);
       }
-      if (typeof item.meters === "number" && item.meters > 0) {
-        updateItem(index, "meters", 0);
+      if (typeof item.kgs === "number" && item.kgs > 0) {
+        updateItem(index, "kgs", 0);
       }
     }
-  }, [maxRolls, item.targetLength]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [maxKrats, item.targetLength]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredProducts = selectedCategoryId === "all" ? products : products?.filter((p: any) => p.categoryId.toString() === selectedCategoryId);
 
-  // Filter available rolls by search (currentLength)
-  const searchFilteredRolls = availableRolls.filter((r: any) => 
-    r.currentLength.toString().includes(rollSearch)
+  // Filter available krats by search (currentWeight)
+  const searchFilteredKrats = availableKrats.filter((r: any) => 
+    r.currentWeight.toString().includes(kratSearch)
   );
   
-  const paginatedRolls = searchFilteredRolls.slice((rollPage - 1) * itemsPerPage, rollPage * itemsPerPage);
-  const totalPages = Math.ceil(searchFilteredRolls.length / itemsPerPage);
+  const paginatedKrats = searchFilteredKrats.slice((kratPage - 1) * itemsPerPage, kratPage * itemsPerPage);
+  const totalPages = Math.ceil(searchFilteredKrats.length / itemsPerPage);
 
   return (
     <div className="flex flex-col md:grid md:grid-cols-12 gap-2 md:items-end p-3 bg-muted/30 rounded-lg">
@@ -171,7 +171,7 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
         <Combobox
           items={filteredProducts?.map((p: any) => ({ 
             value: p.id.toString(), 
-            label: `${p.name} (Stok: ${Number(p.rollStock || 0)} Roll / ${Number(p.meterStock || 0)} ${p.primaryUnit || 'M'})`
+            label: `${p.name} (Stok: ${Number(p.kratStock || 0)} Krat / ${Number(p.kgStock || 0)} ${p.primaryUnit || 'M'})`
           })) || []}
           value={item.productId ? item.productId.toString() : undefined}
           onValueChange={(v) => updateItem(index, "productId", parseInt(v))}
@@ -181,8 +181,8 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
         />
       </div>
       <div className="md:col-span-2">
-        <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Roll (Stiker)</label>
-        <Dialog open={isRollModalOpen} onOpenChange={setIsRollModalOpen}>
+        <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Krat (Stiker)</label>
+        <Dialog open={isKratModalOpen} onOpenChange={setIsKratModalOpen}>
           <DialogTrigger asChild>
               <Button 
                 type="button" 
@@ -191,8 +191,8 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
                 disabled={!item.productId}
               >
               <span className="truncate">
-                {item.selectedRolls && item.selectedRolls.length > 0 
-                   ? `${item.selectedRolls.length} Roll Terpilih`
+                {item.selectedKrats && item.selectedKrats.length > 0 
+                   ? `${item.selectedKrats.length} Krat Terpilih`
                    : item.targetLength 
                      ? `${String(item.targetLength).replace('.', ',')} ${item.primaryUnit || 'unit'} (Auto)`
                      : "Potong Bebas / Manual"}
@@ -203,7 +203,7 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
           <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-50 border-0 rounded-2xl shadow-2xl" onInteractOutside={(e) => { e.preventDefault(); }}>
             <DialogHeader className="pb-2 border-b bg-white p-4">
               <DialogTitle className="text-center font-bold text-lg">
-                {item.productName || "Pilih Roll / Potongan"}
+                {item.productName || "Pilih Krat / Potongan"}
               </DialogTitle>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5 min-h-0">
@@ -211,11 +211,11 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
               <div className="flex flex-col">
                 <label className="flex items-center gap-3 rounded-md px-4 py-3 border hover:bg-slate-50 cursor-pointer w-full sm:w-1/2 mx-auto justify-center bg-white shadow-sm">
                   <Checkbox 
-                    checked={!item.targetLength && (!item.selectedRolls || item.selectedRolls.length === 0)}
+                    checked={!item.targetLength && (!item.selectedKrats || item.selectedKrats.length === 0)}
                     className="h-5 w-5"
                     onCheckedChange={() => {
                       updateItemFields(index, {
-                        selectedRolls: [],
+                        selectedKrats: [],
                         targetLength: undefined
                       });
                     }}
@@ -235,11 +235,11 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
                           className="h-4 w-4"
                           onCheckedChange={() => {
                             updateItemFields(index, {
-                              selectedRolls: [],
+                              selectedKrats: [],
                               targetLength: parseFloat(len),
-                              unit: "roll",
-                              rolls: 1,
-                              meters: parseFloat(len)
+                              unit: "krat",
+                              krats: 1,
+                              kgs: parseFloat(len)
                             });
                           }}
                         />
@@ -250,7 +250,7 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
                 </div>
               )}
 
-              {availableRolls.length > 0 && (
+              {availableKrats.length > 0 && (
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-slate-700">Pilih Spesifik Barcode</div>
@@ -259,51 +259,51 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
                       <Input 
                         placeholder="Cari barcode..." 
                         className="pl-8 h-9 text-sm bg-slate-50" 
-                        value={rollSearch}
-                        onChange={e => { setRollSearch(e.target.value); setRollPage(1); }}
+                        value={kratSearch}
+                        onChange={e => { setKratSearch(e.target.value); setKratPage(1); }}
                       />
                     </div>
                   </div>
                   
                   <div className="border rounded-lg p-3 bg-slate-50">
-                    {paginatedRolls.length === 0 ? (
-                      <div className="text-center py-6 text-sm text-slate-500">Tidak ada roll ditemukan</div>
+                    {paginatedKrats.length === 0 ? (
+                      <div className="text-center py-6 text-sm text-slate-500">Tidak ada krat ditemukan</div>
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                        {paginatedRolls.map((r: any) => {
-                          const isChecked = !!item.selectedRolls?.some((sr: any) => sr.id === r.id);
+                        {paginatedKrats.map((r: any) => {
+                          const isChecked = !!item.selectedKrats?.some((sr: any) => sr.id === r.id);
                           return (
                             <label key={r.id} className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 border cursor-pointer transition-colors shadow-sm ${isChecked ? 'bg-primary/10 border-primary' : 'bg-white hover:border-primary/50'}`} title={r.barcode || r.id}>
                               <Checkbox 
                                 checked={isChecked}
                                 className="h-4 w-4 shrink-0"
                                 onCheckedChange={(checked) => {
-                                  let newSelected = [...(item.selectedRolls || [])];
+                                  let newSelected = [...(item.selectedKrats || [])];
                                   if (checked) {
-                                    newSelected.push({ id: r.id, currentLength: parseFloat(r.currentLength as unknown as string) });
+                                    newSelected.push({ id: r.id, currentWeight: parseFloat(r.currentWeight as unknown as string) });
                                   } else {
                                     newSelected = newSelected.filter((sr: any) => sr.id !== r.id);
                                   }
                                   if (newSelected.length > 0) {
-                                    const sumMeters = newSelected.reduce((sum, sr) => sum + sr.currentLength, 0);
+                                    const sumKgs = newSelected.reduce((sum, sr) => sum + sr.currentWeight, 0);
                                     updateItemFields(index, {
                                       targetLength: undefined,
-                                      selectedRolls: newSelected,
-                                      unit: "roll",
-                                      rolls: newSelected.length,
-                                      meters: sumMeters
+                                      selectedKrats: newSelected,
+                                      unit: "krat",
+                                      krats: newSelected.length,
+                                      kgs: sumKgs
                                     });
                                   } else {
                                     updateItemFields(index, {
                                       targetLength: undefined,
-                                      selectedRolls: newSelected,
-                                      rolls: "",
-                                      meters: ""
+                                      selectedKrats: newSelected,
+                                      krats: "",
+                                      kgs: ""
                                     });
                                   }
                                 }}
                               />
-                              <span className="text-sm font-semibold text-slate-700">{String(r.currentLength).replace('.', ',')}</span>
+                              <span className="text-sm font-semibold text-slate-700">{String(r.currentWeight).replace('.', ',')}</span>
                             </label>
                           );
                         })}
@@ -317,20 +317,20 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
                         type="button"
                         variant="outline" 
                         size="sm" 
-                        disabled={rollPage === 1} 
-                        onClick={(e) => { e.preventDefault(); setRollPage(p => Math.max(1, p - 1)); }}
+                        disabled={kratPage === 1} 
+                        onClick={(e) => { e.preventDefault(); setKratPage(p => Math.max(1, p - 1)); }}
                       >
                         Sebelumnya
                       </Button>
                       <span className="text-sm text-slate-500 font-medium">
-                        Halaman {rollPage} dari {totalPages}
+                        Halaman {kratPage} dari {totalPages}
                       </span>
                       <Button 
                         type="button"
                         variant="outline" 
                         size="sm" 
-                        disabled={rollPage === totalPages} 
-                        onClick={(e) => { e.preventDefault(); setRollPage(p => Math.min(totalPages, p + 1)); }}
+                        disabled={kratPage === totalPages} 
+                        onClick={(e) => { e.preventDefault(); setKratPage(p => Math.min(totalPages, p + 1)); }}
                       >
                         Selanjutnya
                       </Button>
@@ -340,7 +340,7 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
               )}
             </div>
             <div className="flex justify-end p-4 border-t bg-slate-50">
-              <Button type="button" onClick={() => setIsRollModalOpen(false)} className="w-full sm:w-auto px-8">Selesai</Button>
+              <Button type="button" onClick={() => setIsKratModalOpen(false)} className="w-full sm:w-auto px-8">Selesai</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -350,49 +350,49 @@ function SaleItemRow({ item, index, products, categories, updateItem, updateItem
         <Combobox
           items={[
             {
-              value: "meter",
+              value: "kg",
               label: (item.primaryUnit?.trim() || "Satuan Utama") + (item.primaryUnit && item.secondaryUnit && item.primaryUnit === item.secondaryUnit ? " (Potongan)" : "")
             },
             {
-              value: "roll",
+              value: "krat",
               label: (item.secondaryUnit?.trim() || "Satuan Grosir") + (item.primaryUnit && item.secondaryUnit && item.primaryUnit === item.secondaryUnit ? " (Gulungan)" : "")
             }
           ]}
           value={item.unit}
           onValueChange={(v) => updateItem(index, "unit", v)}
-          disabled={!!item.rollId}
+          disabled={!!item.batchId}
           placeholder="Pilih"
           searchPlaceholder="Cari satuan..."
           className="h-12 font-medium"
         />
       </div>
       <div className="md:col-span-1">
-        <label className="text-xs font-semibold text-muted-foreground mb-1.5 block truncate">{item.unit === "meter" ? `Jml (${item.primaryUnit?.toLowerCase() || "satuan"})` : `Jml (${item.secondaryUnit?.toLowerCase() || "satuan"})`}</label>
+        <label className="text-xs font-semibold text-muted-foreground mb-1.5 block truncate">{item.unit === "kg" ? `Jml (${item.primaryUnit?.toLowerCase() || "satuan"})` : `Jml (${item.secondaryUnit?.toLowerCase() || "satuan"})`}</label>
         <Input 
-          className={`h-12 text-center text-lg font-medium ${item.unit === "roll" && item.targetLength && maxRolls === 0 ? "border-destructive bg-destructive/10 text-destructive" : ""} ${item.selectedRolls && item.selectedRolls.length > 0 ? "bg-muted/50 cursor-not-allowed" : ""}`} 
-          type="number" step="any" min={0} max={maxRolls} 
+          className={`h-12 text-center text-lg font-medium ${item.unit === "krat" && item.targetLength && maxKrats === 0 ? "border-destructive bg-destructive/10 text-destructive" : ""} ${item.selectedKrats && item.selectedKrats.length > 0 ? "bg-muted/50 cursor-not-allowed" : ""}`} 
+          type="number" step="any" min={0} max={maxKrats} 
           value={
-            // Saat Pilih Spesifik Barcode aktif → tampilkan total panjang (meters), bukan jumlah roll
-            (item.selectedRolls && item.selectedRolls.length > 0)
-              ? item.meters
-              : item.unit === "meter" ? item.meters : item.rolls
+            // Saat Pilih Spesifik Barcode aktif → tampilkan total panjang (kgs), bukan jumlah krat
+            (item.selectedKrats && item.selectedKrats.length > 0)
+              ? item.kgs
+              : item.unit === "kg" ? item.kgs : item.krats
           }
           onChange={e => {
-            // Jika selectedRolls aktif, input terkunci — tolak perubahan
-            if (item.selectedRolls && item.selectedRolls.length > 0) return;
+            // Jika selectedKrats aktif, input terkunci — tolak perubahan
+            if (item.selectedKrats && item.selectedKrats.length > 0) return;
             let val: number | "" = e.target.value === "" ? "" : parseFloat(e.target.value);
-            if (item.unit === "roll" && maxRolls !== undefined && typeof val === "number" && val > maxRolls) {
-              val = maxRolls;
+            if (item.unit === "krat" && maxKrats !== undefined && typeof val === "number" && val > maxKrats) {
+              val = maxKrats;
             }
-            updateItem(index, item.unit === "meter" ? "meters" : "rolls", val);
+            updateItem(index, item.unit === "kg" ? "kgs" : "krats", val);
           }} 
-          readOnly={!!(item.selectedRolls && item.selectedRolls.length > 0)}
-          disabled={(item.unit === "meter" && !!item.rollId) || (item.unit === "roll" && !!item.rollId) || (item.unit === "roll" && !!item.targetLength && maxRolls === 0)} 
+          readOnly={!!(item.selectedKrats && item.selectedKrats.length > 0)}
+          disabled={(item.unit === "kg" && !!item.batchId) || (item.unit === "krat" && !!item.batchId) || (item.unit === "krat" && !!item.targetLength && maxKrats === 0)} 
         />
-        {item.selectedRolls && item.selectedRolls.length > 0 && (
-          <p className="text-[10px] text-slate-400 mt-1">{item.selectedRolls.length} roll • {item.meters} {item.primaryUnit || 'unit'} total</p>
+        {item.selectedKrats && item.selectedKrats.length > 0 && (
+          <p className="text-[10px] text-slate-400 mt-1">{item.selectedKrats.length} krat • {item.kgs} {item.primaryUnit || 'unit'} total</p>
         )}
-        {item.unit === "roll" && item.targetLength && maxRolls === 0 && (
+        {item.unit === "krat" && item.targetLength && maxKrats === 0 && (
           <p className="text-[10px] text-destructive mt-1">Stok habis dipakai baris lain</p>
         )}
       </div>
@@ -520,13 +520,13 @@ export default function Penjualan() {
       dataItems.forEach((i: any) => {
         const prod = currentProducts?.find((p: any) => p.id?.toString() === i.productId?.toString());
         
-        if (i.rollId) {
-          // Find existing merged item for this product that is ALSO using selectedRolls
-          const existing = mergedItems.find(m => m.productId === i.productId && m.pricePerUnit === i.pricePerMeter && m.selectedRolls);
-          if (existing && existing.selectedRolls) {
-            existing.selectedRolls.push({ id: i.rollId, currentLength: parseFloat(i.meters) });
-            existing.rolls = (typeof existing.rolls === "number" ? existing.rolls : 0) + (i.rolls || 1);
-            existing.meters = (typeof existing.meters === "number" ? existing.meters : 0) + parseFloat(i.meters || 0);
+        if (i.batchId) {
+          // Find existing merged item for this product that is ALSO using selectedKrats
+          const existing = mergedItems.find(m => m.productId === i.productId && m.pricePerUnit === i.pricePerKg && m.selectedKrats);
+          if (existing && existing.selectedKrats) {
+            existing.selectedKrats.push({ id: i.batchId, currentWeight: parseFloat(i.kgs) });
+            existing.krats = (typeof existing.krats === "number" ? existing.krats : 0) + (i.krats || 1);
+            existing.kgs = (typeof existing.kgs === "number" ? existing.kgs : 0) + parseFloat(i.kgs || 0);
             existing.subtotal += parseFloat(i.subtotal || 0);
             return;
           }
@@ -536,28 +536,28 @@ export default function Penjualan() {
             categoryId: i.categoryId || prod?.categoryId || 0,
             productId: i.productId,
             productName: i.productName || prod?.name || "",
-            selectedRolls: [{ id: i.rollId, currentLength: parseFloat(i.meters) }],
-            unit: "roll",
-            rolls: i.rolls || 1,
-            meters: parseFloat(i.meters || 0),
-            pricePerUnit: parseFloat(i.pricePerMeter || 0),
+            selectedKrats: [{ id: i.batchId, currentWeight: parseFloat(i.kgs) }],
+            unit: "krat",
+            krats: i.krats || 1,
+            kgs: parseFloat(i.kgs || 0),
+            pricePerUnit: parseFloat(i.pricePerKg || 0),
             subtotal: parseFloat(i.subtotal || 0),
             primaryUnit: i.primaryUnit || prod?.primaryUnit,
             secondaryUnit: i.secondaryUnit || prod?.secondaryUnit,
           });
         } else {
-          // Regular item without specific roll (bisa Potong Bebas atau Auto Roll)
-          const isAutoRoll = i.rolls > 0 && i.meters > 0;
-          const targetLen = isAutoRoll ? (parseFloat(i.meters) / parseFloat(i.rolls)) : undefined;
+          // Regular item without specific krat (bisa Potong Bebas atau Auto Krat)
+          const isAutoKrat = i.krats > 0 && i.kgs > 0;
+          const targetLen = isAutoKrat ? (parseFloat(i.kgs) / parseFloat(i.krats)) : undefined;
           
           mergedItems.push({
             categoryId: i.categoryId || prod?.categoryId || 0,
             productId: i.productId,
             productName: i.productName || prod?.name || "",
-            unit: i.rolls > 0 ? "roll" : "meter",
-            rolls: parseFloat(i.rolls || 0),
-            meters: parseFloat(i.meters || 0),
-            pricePerUnit: parseFloat(i.pricePerMeter || 0),
+            unit: i.krats > 0 ? "krat" : "kg",
+            krats: parseFloat(i.krats || 0),
+            kgs: parseFloat(i.kgs || 0),
+            pricePerUnit: parseFloat(i.pricePerKg || 0),
             subtotal: parseFloat(i.subtotal || 0),
             targetLength: targetLen,
             primaryUnit: i.primaryUnit || prod?.primaryUnit,
@@ -663,7 +663,7 @@ export default function Penjualan() {
   };
 
   const addItem = () => {
-    setItems(prev => [...prev, { productId: 0, productName: "", unit: "meter", rolls: "", meters: "", pricePerUnit: "", subtotal: 0 }]);
+    setItems(prev => [...prev, { productId: 0, productName: "", unit: "kg", krats: "", kgs: "", pricePerUnit: "", subtotal: 0 }]);
   };
 
   const removeItem = (index: number) => setItems(prev => prev.filter((_, i) => i !== index));
@@ -675,10 +675,10 @@ export default function Penjualan() {
       const item = updated[index];
       
       // Calculate derived state
-      if (item.unit === "roll" && item.targetLength && !item.rollId) {
-        item.meters = (typeof item.rolls === "number" ? item.rolls : 0) * item.targetLength;
+      if (item.unit === "krat" && item.targetLength && !item.batchId) {
+        item.kgs = (typeof item.krats === "number" ? item.krats : 0) * item.targetLength;
       }
-      item.subtotal = Math.round((typeof item.meters === "number" ? item.meters : 0) * (typeof item.pricePerUnit === "number" ? item.pricePerUnit : 0));
+      item.subtotal = Math.round((typeof item.kgs === "number" ? item.kgs : 0) * (typeof item.pricePerUnit === "number" ? item.pricePerUnit : 0));
       
       return updated;
     });
@@ -693,7 +693,7 @@ export default function Penjualan() {
       if (prod) {
         updateItemFields(index, {
           productName: prod.name,
-          pricePerUnit: parseFloat(String(prod.pricePerMeter)),
+          pricePerUnit: parseFloat(String(prod.pricePerKg)),
           primaryUnit: prod.primaryUnit || undefined,
           secondaryUnit: prod.secondaryUnit || undefined,
           categoryId: prod.categoryId
@@ -726,12 +726,12 @@ export default function Penjualan() {
         const cat = categories?.find(c => c.id === prod?.categoryId);
         return {
           productId: i.productId,
-          rollId: i.rollId,
+          batchId: i.batchId,
           categoryName: cat?.name,
           productName: i.productName,
-          meters: typeof i.meters === "number" ? i.meters : 0,
-          rolls: typeof i.rolls === "number" ? i.rolls : 0,
-          pricePerMeter: typeof i.pricePerUnit === "number" ? i.pricePerUnit : 0,
+          kgs: typeof i.kgs === "number" ? i.kgs : 0,
+          krats: typeof i.krats === "number" ? i.krats : 0,
+          pricePerKg: typeof i.pricePerUnit === "number" ? i.pricePerUnit : 0,
           subtotal: i.subtotal,
           primaryUnit: i.primaryUnit || prod?.primaryUnit,
           secondaryUnit: i.secondaryUnit || prod?.secondaryUnit,
@@ -742,23 +742,23 @@ export default function Penjualan() {
   };
 
   const buildItemsPayload = () => items.flatMap(i => {
-    if (i.selectedRolls && i.selectedRolls.length > 0) {
-      return i.selectedRolls.map(r => {
-        const metersNum = typeof r.currentLength === "string" ? parseFloat(r.currentLength) : (r.currentLength || 0);
+    if (i.selectedKrats && i.selectedKrats.length > 0) {
+      return i.selectedKrats.map(r => {
+        const kgsNum = typeof r.currentWeight === "string" ? parseFloat(r.currentWeight) : (r.currentWeight || 0);
         const priceNum = typeof i.pricePerUnit === "number" ? i.pricePerUnit : (typeof i.pricePerUnit === "string" ? parseFloat(i.pricePerUnit) || 0 : 0);
-        return { productId: i.productId, rollId: r.id, rolls: 1, meters: metersNum || 0, pricePerMeter: priceNum, subtotal: (metersNum || 0) * priceNum };
+        return { productId: i.productId, batchId: r.id, krats: 1, kgs: kgsNum || 0, pricePerKg: priceNum, subtotal: (kgsNum || 0) * priceNum };
       });
     }
-    const metersNum = typeof i.meters === "number" ? i.meters : (typeof i.meters === "string" ? parseFloat(i.meters) : 0);
-    const rollsNum = typeof i.rolls === "number" ? i.rolls : (typeof i.rolls === "string" ? parseFloat(i.rolls) : 0);
+    const kgsNum = typeof i.kgs === "number" ? i.kgs : (typeof i.kgs === "string" ? parseFloat(i.kgs) : 0);
+    const kratsNum = typeof i.krats === "number" ? i.krats : (typeof i.krats === "string" ? parseFloat(i.krats) : 0);
     const priceNum = typeof i.pricePerUnit === "number" ? i.pricePerUnit : (typeof i.pricePerUnit === "string" ? parseFloat(i.pricePerUnit) || 0 : 0);
-    const fallbackSubtotal = (typeof i.subtotal === "number" ? i.subtotal : (metersNum * priceNum));
-    return [{ productId: i.productId, rollId: i.rollId || undefined, rolls: rollsNum || 0, meters: metersNum || 0, pricePerMeter: priceNum, subtotal: fallbackSubtotal }];
+    const fallbackSubtotal = (typeof i.subtotal === "number" ? i.subtotal : (kgsNum * priceNum));
+    return [{ productId: i.productId, batchId: i.batchId || undefined, krats: kratsNum || 0, kgs: kgsNum || 0, pricePerKg: priceNum, subtotal: fallbackSubtotal }];
   });
 
   const handleSubmit = async (isDraft = false) => {
     if (items.length === 0) { toast({ title: "Tambahkan minimal 1 item", variant: "destructive" }); return; }
-    if (items.some(i => !i.productId || (typeof i.meters === "number" ? i.meters : 0) <= 0)) { toast({ title: "Mohon lengkapi data barang", variant: "destructive" }); return; }
+    if (items.some(i => !i.productId || (typeof i.kgs === "number" ? i.kgs : 0) <= 0)) { toast({ title: "Mohon lengkapi data barang", variant: "destructive" }); return; }
 
     const payload = {
       invoiceNumber: editingSaleId ? invoiceNumber : undefined,
@@ -978,7 +978,7 @@ export default function Penjualan() {
       )}
       </div> {/* end static top strip */}
 
-      {/* ── Scrollable Table Container ── */}
+      {/* ── scrollable Table Container ── */}
       <div className="flex-1 overflow-auto min-h-0">
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-w-0">
         {isLoading ? (
@@ -1244,7 +1244,7 @@ export default function Penjualan() {
 
           <div id="drawer-portal-target" />
 
-          {/* ── Scrollable Body ── */}
+          {/* ── scrollable Body ── */}
           <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
 
             {/* Section: Info Transaksi */}
@@ -1526,7 +1526,7 @@ export default function Penjualan() {
                   <li><strong>Tanggal</strong> — format dd/mm/yyyy</li>
                   <li><strong>Pelanggan</strong> — nama pelanggan (atau kosong untuk Umum)</li>
                   <li><strong>Produk / Barang</strong> — nama barang sesuai di sistem (wajib)</li>
-                  <li><strong>Roll</strong>, <strong>Meter/Yard</strong>, <strong>Harga / Meter</strong>, <strong>Subtotal</strong></li>
+                  <li><strong>Krat</strong>, <strong>Kg/Yard</strong>, <strong>Harga / Kg</strong>, <strong>Subtotal</strong></li>
                   <li><strong>Metode Bayar</strong> — tunai / kredit / transfer</li>
                 </ul>
                 <p className="text-blue-600 mt-1">⚠️ Invoice yang sudah ada di sistem akan dilewati otomatis.</p>

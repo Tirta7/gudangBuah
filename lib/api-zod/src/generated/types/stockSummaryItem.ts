@@ -12,8 +12,8 @@ export interface StockSummaryItem {
   /** @nullable */
   categoryName: string | null;
   rackLocation?: string;
-  rollStock: number;
-  meterStock: number;
+  kratStock: number;
+  kgStock: number;
   value: number;
   isLowStock?: boolean;
 }
