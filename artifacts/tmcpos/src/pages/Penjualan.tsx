@@ -1526,7 +1526,7 @@ export default function Penjualan() {
                   <li><strong>Tanggal</strong> — format dd/mm/yyyy</li>
                   <li><strong>Pelanggan</strong> — nama pelanggan (atau kosong untuk Umum)</li>
                   <li><strong>Produk / Barang</strong> — nama barang sesuai di sistem (wajib)</li>
-                  <li><strong>Krat</strong>, <strong>Kg/Yard</strong>, <strong>Harga / Kg</strong>, <strong>Subtotal</strong></li>
+                  <li><strong>Krat</strong>, <strong>Kg/KG</strong>, <strong>Harga / Kg</strong>, <strong>Subtotal</strong></li>
                   <li><strong>Metode Bayar</strong> — tunai / kredit / transfer</li>
                 </ul>
                 <p className="text-blue-600 mt-1">⚠️ Invoice yang sudah ada di sistem akan dilewati otomatis.</p>

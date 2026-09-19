@@ -57,7 +57,7 @@ export function ReturnInvoiceModal({ open, onOpenChange, returnId }: ReturnInvoi
     };
   }, [open, returnDoc]);
 
-  const appName = (settings?.["app_name"] || "ENKA TEXTILE").replace(/ENKATEXTILE/gi, "ENKA TEXTILE").replace(/EnkaTextile/gi, "ENKA TEXTILE");
+  const appName = (settings?.["app_name"] || "GUDANG BUAH").replace(/ENKATEXTILE/gi, "GUDANG BUAH").replace(/Gudang Buah/gi, "GUDANG BUAH");
   const appAddress = settings?.["app_address"] || "Alamat belum diatur (Ubah di Pengaturan)";
 
   const handlePrint = () => {

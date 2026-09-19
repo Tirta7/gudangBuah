@@ -15,7 +15,7 @@ interface HeaderProps {
 export function Header({ onMenuClick, theme, onThemeToggle, sidebarCollapsed, onSidebarToggle }: HeaderProps) {
   const { isConnected } = useWebSocket();
   const { data: settings } = useSettings();
-  const appName = settings?.["app_name"] || "EnkaTextile";
+  const appName = settings?.["app_name"] || "Gudang Buah";
 
   return (
     <header

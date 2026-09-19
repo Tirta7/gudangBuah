@@ -28,7 +28,7 @@ export default function Home() {
   const { data: settings } = useSettings();
   const [, setLocation] = useLocation();
 
-  const appName = settings?.["app_name"] || "EnkaTextile";
+  const appName = settings?.["app_name"] || "Gudang Buah";
   const appAddress = settings?.["app_address"] || "Alamat belum diatur (Ubah di Pengaturan)";
 
   const { data: chartData, isLoading: loadingChart } = useGetDashboardSalesChart({}, { query: { queryKey: getGetDashboardSalesChartQueryKey({}) } });

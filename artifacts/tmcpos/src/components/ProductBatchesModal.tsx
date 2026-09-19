@@ -286,7 +286,7 @@ export function ProductBatchesModal({ productId, productName, isOpen, onClose }:
               ].join(" ")}
             >
               <SortIcon className="h-3 w-3" />
-              Yard: {sortLabel}
+              KG: {sortLabel}
             </button>
 
             {/* Status filter */}

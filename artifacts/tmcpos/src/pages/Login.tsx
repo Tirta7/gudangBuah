@@ -16,7 +16,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const [, navigate] = useLocation();
-  const [appName, setAppName] = useState("EnkaTextile");
+  const [appName, setAppName] = useState("Gudang Buah");
   const [appLogo, setAppLogo] = useState("");
 
   const { data: settings } = useSettings();

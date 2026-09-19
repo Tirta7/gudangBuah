@@ -73,7 +73,7 @@ function printSection(id: string) {
   const w = window.open("", "_blank");
   if (!w) return;
   w.document.write(`
-    <html><head><title>Laporan EnkaTextile</title>
+    <html><head><title>Laporan Gudang Buah</title>
     <style>
       body { font-family: Arial, sans-serif; font-size: 11px; color: #1e293b; }
       table { width: 100%; border-collapse: collapse; margin-top: 16px; }

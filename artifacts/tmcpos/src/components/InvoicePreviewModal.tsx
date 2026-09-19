@@ -150,7 +150,7 @@ export function InvoicePreviewModal({ open, onOpenChange, data, saleId }: Invoic
     };
   }, [open, displayData]);
 
-  const appName = (settings?.["app_name"] || "ENKA TEXTILE").replace(/ENKATEXTILE/gi, "ENKA TEXTILE").replace(/EnkaTextile/gi, "ENKA TEXTILE");
+  const appName = (settings?.["app_name"] || "GUDANG BUAH").replace(/ENKATEXTILE/gi, "GUDANG BUAH").replace(/Gudang Buah/gi, "GUDANG BUAH");
   const appAddress = settings?.["app_address"] || "Jl. Raya Jrebengkembang, Kedolon Gang Griya Azzahra, Karangdadap Kab. Pekalongan";
   const invoiceBankName = settings?.["invoice_bank_name"] || "A.n Spectra Jaya Fashion PT";
   const invoiceBankAccount = settings?.["invoice_bank_account"] || "BCA - 2384564444";

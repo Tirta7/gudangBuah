@@ -155,14 +155,14 @@ function BottomSheet({ product, onClose, onAddToCart, enableCart, whatsapp }: { 
     if (selectedSize === null) {
       customLength = parseFloat(customLengthStr);
       if (isNaN(customLength) || customLength <= 0) {
-        alert("Silakan masukkan jumlah yard/kg yang valid untuk Bebas Potong.");
+        alert("Silakan masukkan jumlah kg/kg yang valid untuk Bebas Potong.");
         return;
       }
     }
 
     if (!enableCart) {
       // Direct checkout if cart is disabled
-      let msg = `Halo ENKA TEXTILE! 👋\nSaya ingin memesan:\n\n`;
+      let msg = `Halo GUDANG BUAH! 👋\nSaya ingin memesan:\n\n`;
       if (selectedSize === null) {
         msg += `${quantity}x ${product.name} (Bebas Potong - ${customLengthStr} ${product.primaryUnit})\n`;
       } else {
@@ -532,7 +532,7 @@ function CartModal({
   const subtotal = cart.reduce((acc, item) => acc + calculateItemPrice(item) * item.qty, 0);
 
   const handleCheckout = () => {
-    let msg = `Halo ENKA TEXTILE! 👋\nSaya ingin memesan:\n\n`;
+    let msg = `Halo GUDANG BUAH! 👋\nSaya ingin memesan:\n\n`;
     cart.forEach((item, index) => {
       const itemPrice = calculateItemPrice(item);
       const totalItemPrice = itemPrice * item.qty;
@@ -610,7 +610,7 @@ export default function Shop() {
   const [selectedProduct, setSelectedProduct] = useState<ShopProductDetail | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [shopSettings, setShopSettings] = useState({ storeName: "ENKA TEXTILE", whatsapp: "", enableCart: true });
+  const [shopSettings, setShopSettings] = useState({ storeName: "GUDANG BUAH", whatsapp: "", enableCart: true });
   const [activeSection, setActiveSection] = useState<"beranda" | "katalog" | "promo">("beranda");
 
   // Cart state
@@ -826,7 +826,7 @@ export default function Shop() {
                 {/* WhatsApp Quick Contact (Desktop) */}
                 {shopSettings.whatsapp && (
                   <a
-                    href={`https://wa.me/${shopSettings.whatsapp}?text=${encodeURIComponent('Halo ENKA TEXTILE! 👋 Saya ingin bertanya tentang produk kain tersedia.')}`}
+                    href={`https://wa.me/${shopSettings.whatsapp}?text=${encodeURIComponent('Halo GUDANG BUAH! 👋 Saya ingin bertanya tentang produk kain tersedia.')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-colors shadow-sm shadow-emerald-200 shrink-0"

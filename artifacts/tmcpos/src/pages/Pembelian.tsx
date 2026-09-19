@@ -609,11 +609,11 @@ export default function Pembelian() {
                       <Input className="h-8 px-2" type="number" step="1" min={0} value={item.krats} onChange={e => updateItem(index, "krats", e.target.value === "" ? "" : parseFloat(e.target.value))} />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="text-xs text-muted-foreground mb-1 block truncate">Qty ({item.primaryUnit || "Yard"})</label>
+                      <label className="text-xs text-muted-foreground mb-1 block truncate">Qty ({item.primaryUnit || "KG"})</label>
                       <Input className="h-8 px-2 bg-slate-100 cursor-not-allowed font-medium" type="number" step="any" min={0} value={item.kgs} readOnly />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="text-xs text-muted-foreground mb-1 block truncate">Harga / {item.primaryUnit || "Yard"}</label>
+                      <label className="text-xs text-muted-foreground mb-1 block truncate">Harga / {item.primaryUnit || "KG"}</label>
                       <Input className="h-8 px-2" type="number" step="any" min={0} value={item.pricePerKg} onChange={e => updateItem(index, "pricePerKg", e.target.value === "" ? "" : parseFloat(e.target.value))} />
                     </div>
                     <div className="md:col-span-1">
@@ -628,14 +628,14 @@ export default function Pembelian() {
                   {/* Dynamic inputs for krat lengths */}
                   {item.krats && (item.krats as number) > 0 && (
                     <div className="mt-2 bg-white p-3 rounded-lg border border-slate-200">
-                      <label className="text-xs font-semibold text-slate-700 block mb-2 border-b pb-1">Detail Panjang Tiap Krat ({item.primaryUnit || "Yard"})</label>
+                      <label className="text-xs font-semibold text-slate-700 block mb-2 border-b pb-1">Detail Panjang Tiap Krat ({item.primaryUnit || "KG"})</label>
                       <div className="flex flex-wrap gap-3">
                         {Array.from({ length: item.krats as number }).map((_, i) => (
                           <div key={i} className="flex flex-col w-24 shrink-0 space-y-1 relative group">
                             <label className="text-[10px] font-medium text-slate-500 truncate">Krat #{i + 1}</label>
                             <Input
                               type="number" step="any" min={0}
-                              placeholder="Yard"
+                              placeholder="KG"
                               className="h-8 text-xs px-2"
                               value={item.batchWeights?.[i] || ''}
                               onChange={e => updateItem(index, `batchWeights.${i}` as any, e.target.value === "" ? "" : parseFloat(e.target.value))}
@@ -716,7 +716,7 @@ export default function Pembelian() {
                   <li><strong>Tanggal</strong> — format dd/mm/yyyy</li>
                   <li><strong>Supplier</strong> — nama supplier sesuai di sistem (wajib)</li>
                   <li><strong>Produk / Barang</strong> — nama barang sesuai di sistem (wajib)</li>
-                  <li><strong>Krat</strong>, <strong>Kg/Yard</strong>, <strong>Harga / Kg</strong>, <strong>Subtotal</strong></li>
+                  <li><strong>Krat</strong>, <strong>Kg/KG</strong>, <strong>Harga / Kg</strong>, <strong>Subtotal</strong></li>
                   <li><strong>Metode Bayar</strong> — tunai / kredit / tempo</li>
                 </ul>
                 <p className="text-blue-600 mt-1">⚠️ Invoice yang sudah ada di sistem akan dilewati otomatis.</p>

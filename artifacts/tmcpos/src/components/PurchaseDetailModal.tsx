@@ -103,7 +103,7 @@ export function PurchaseDetailModal({ purchaseId, isOpen, onClose }: PurchaseDet
                   <div className="hidden md:grid grid-cols-12 gap-2 bg-slate-100 p-3 text-xs font-semibold text-slate-600">
                     <div className="col-span-5">NAMA BARANG</div>
                     <div className="col-span-2 text-center">KRAT</div>
-                    <div className="col-span-2 text-right">QTY / YARD</div>
+                    <div className="col-span-2 text-right">QTY / KG</div>
                     <div className="col-span-3 text-right">SUBTOTAL</div>
                   </div>
 

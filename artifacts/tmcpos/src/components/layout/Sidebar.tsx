@@ -69,7 +69,7 @@ export function Sidebar({ isOpen, setOpen, collapsed, setCollapsed }: SidebarPro
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { data: settings } = useSettings();
-  const appName = settings?.["app_name"] || "EnkaTextile";
+  const appName = settings?.["app_name"] || "Gudang Buah";
   const appLogo = settings?.["app_logo"];
 
   const handleLogout = async () => {

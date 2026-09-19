@@ -942,7 +942,7 @@ export default function Pengaturan() {
             <div className="space-y-1.5">
               <Label>Nama Satuan</Label>
               <Input
-                placeholder="mis: KG, YARD, KILOGRAM"
+                placeholder="mis: KG, KG, KILOGRAM"
                 value={newUnitName}
                 onChange={(e) => setNewUnitName(e.target.value.toUpperCase())}
               />

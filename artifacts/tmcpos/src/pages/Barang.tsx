@@ -323,7 +323,7 @@ export default function Barang() {
           <div className="bg-violet-50 border border-violet-100 rounded-xl px-2.5 py-2 flex items-center gap-1.5">
             <Ruler className="w-3.5 h-3.5 text-violet-400 shrink-0" strokeWidth={1.5} />
             <div className="min-w-0">
-              <p className="text-[8px] font-bold text-violet-400 uppercase tracking-wider">Yard</p>
+              <p className="text-[8px] font-bold text-violet-400 uppercase tracking-wider">KG</p>
               <p className="text-xs font-black text-violet-800 leading-tight truncate">
                 {formatNumber(summaryProducts?.reduce((s, p) => s + (Number(p.kgStock) || 0), 0) ?? 0)}
               </p>
@@ -756,7 +756,7 @@ export default function Barang() {
 
                   <FormField control={form.control} name="kgStock" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs font-semibold text-slate-600">Total Stok Ecer (Yard/Kg)</FormLabel>
+                      <FormLabel className="text-xs font-semibold text-slate-600">Total Stok Ecer (KG)</FormLabel>
                       <FormControl>
                         <Input type="number" step="any" min={0} readOnly
                           className="h-10 bg-violet-50 border-violet-200 rounded-xl font-bold text-violet-700 cursor-not-allowed"
@@ -785,7 +785,7 @@ export default function Barang() {
                   const currentWeights = form.watch('batchWeights') || [];
                   return (
                     <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex flex-col gap-3">
-                      <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider shrink-0">Detail Panjang Tiap Krat (Yard/Kg)</p>
+                      <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider shrink-0">Detail Berat Tiap Krat (KG)</p>
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-45 overflow-y-auto pr-1.5">
                         {Array.from({ length: form.watch('kratStock') || 0 }).map((_, i) => (
                           <div key={i} className="space-y-1 relative group">

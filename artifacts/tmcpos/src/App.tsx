@@ -118,7 +118,7 @@ function GlobalAppEffects() {
     if (appName) {
       document.title = appName;
     } else {
-      document.title = "EnkaTextile";
+      document.title = "Gudang Buah";
     }
 
     const appLogo = settings?.["app_logo"];
